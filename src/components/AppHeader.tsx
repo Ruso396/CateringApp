@@ -2,14 +2,14 @@ import { useProfile } from '@/src/context/ProfileContext';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
-  Animated,
-  Image,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Dimensions,
+    Animated,
+    Dimensions,
+    Image,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
@@ -33,7 +33,7 @@ export function AppHeader({ searchQuery, onSearchChange }: AppHeaderProps) {
     Animated.timing(slideAnim, {
       toValue: menuPanelVisible ? 0 : -DRAWER_WIDTH,
       duration: 250,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [menuPanelVisible]);
 

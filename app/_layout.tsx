@@ -1,11 +1,12 @@
+import 'react-native-reanimated';
+
 import { DesignProvider } from '@/src/context/DesignContext';
 import { ProfileProvider } from '@/src/context/ProfileContext';
 import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Alert } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 /**
  * 🔥 PRODUCTION ERROR HANDLER
