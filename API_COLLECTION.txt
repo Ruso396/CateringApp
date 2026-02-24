@@ -1,0 +1,321 @@
+================================================================================
+  API COLLECTION – All Backend APIs (for testing)
+  Base URL: http://YOUR_PC_IP/backend  (e.g. http://192.168.0.100/backend)
+  Content-Type: application/json
+  Source: backend/api/routes.php + src/config/api.ts + src/services/api.ts
+================================================================================
+
+--------------------------------------------------------------------------------
+1. PING (health check)
+--------------------------------------------------------------------------------
+  Method:  GET
+  Path:    /ping
+  Body:    none
+
+  Response 200:
+    { "success": true, "message": "API working" }
+
+  Frontend: ping() in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+2. PROFILE – Get
+--------------------------------------------------------------------------------
+  Method:  GET
+  Path:    /profile
+  Body:    none
+
+  Response 200:
+    {
+      "success": true,
+      "profile": {
+        "id": number,
+        "name": string,
+        "mobile": string,
+        "address": string,
+        "profile_image": string | null
+      }
+    }
+
+  Frontend: fetchProfile() in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+3. PROFILE – Update (create or update)
+--------------------------------------------------------------------------------
+  Method:  POST or PUT
+  Path:    /profile
+  Body:    JSON
+    {
+      "name": string,
+      "mobile": string,
+      "address": string,
+      "profile_image": string | null
+    }
+
+  Response 200:
+    { "success": true, "message": "Profile created" } or "Profile updated"
+
+  Frontend: updateProfile() in src/services/api.ts (uses POST)
+
+
+--------------------------------------------------------------------------------
+4. EVENTS – List all
+--------------------------------------------------------------------------------
+  Method:  GET
+  Path:    /events
+  Body:    none
+
+  Response 200:
+    {
+      "success": true,
+      "events": [
+        {
+          "id": number,
+          "user_id": number,
+          "title": string,
+          "date": string | null,
+          "created_at": string (optional)
+        }
+      ]
+    }
+
+  Frontend: fetchEvents() in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+5. EVENTS – Create
+--------------------------------------------------------------------------------
+  Method:  POST
+  Path:    /events
+  Body:    JSON
+    {
+      "title": string,     // required
+      "date": string | null  // optional, format YYYY-MM-DD
+    }
+
+  Response 200:
+    {
+      "success": true,
+      "event": {
+        "id": number,
+        "user_id": number,
+        "title": string,
+        "date": string | null
+      }
+    }
+
+  Error 400: { "success": false, "error": "Title is required" }
+
+  Frontend: createEvent() in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+6. EVENT – Get by ID
+--------------------------------------------------------------------------------
+  Method:  GET
+  Path:    /events/{id}
+  Params:  id = numeric event ID
+
+  Response 200:
+    {
+      "success": true,
+      "event": {
+        "id": number,
+        "user_id": number,
+        "title": string,
+        "date": string | null,
+        "created_at": string (optional)
+      }
+    }
+
+  Error 404: { "success": false, "error": "Event not found" }
+
+  Frontend: fetchEvent(id) in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+7. EVENT – Update by ID
+--------------------------------------------------------------------------------
+  Method:  PUT
+  Path:    /events/{id}
+  Params:  id = numeric event ID
+  Body:    JSON
+    {
+      "title": string,     // required
+      "date": string | null  // optional, format YYYY-MM-DD
+    }
+
+  Response 200:
+    { "success": true, "message": "Event updated" }
+
+  Error 404: { "success": false, "error": "Event not found" }
+  Error 400: { "success": false, "error": "Title is required" }
+
+  Frontend: updateEvent(id, payload) in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+8. GROCERY – Get items for event
+--------------------------------------------------------------------------------
+  Method:  GET
+  Path:    /events/{id}/grocery
+  Params:  id = numeric event ID
+
+  Response 200:
+    {
+      "success": true,
+      "items": [
+        {
+          "id": number,
+          "event_id": number,
+          "s_no": number,
+          "name": string,
+          "kg": number,
+          "gram": number
+        }
+      ]
+    }
+
+  Error 404: { "success": false, "error": "Event not found" }
+
+  Frontend: fetchGroceryItems(eventId) in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+9. GROCERY – Save items for event (replace all)
+--------------------------------------------------------------------------------
+  Method:  POST or PUT
+  Path:    /events/{id}/grocery
+  Params:  id = numeric event ID
+  Body:    JSON
+    {
+      "items": [
+        { "s_no": number, "name": string, "kg": number, "gram": number }
+        // id optional; s_no can default to index+1
+      ]
+    }
+
+  Response 200:
+    { "success": true, "message": "Grocery items saved" }
+
+  Error 404: { "success": false, "error": "Event not found" }
+  Error 400: { "success": false, "error": "items must be an array" }
+
+  Frontend: saveGroceryItems(eventId, items) in src/services/api.ts (uses POST)
+
+
+--------------------------------------------------------------------------------
+10. VEGETABLE – Get items for event
+--------------------------------------------------------------------------------
+  Method:  GET
+  Path:    /events/{id}/vegetable
+  Params:  id = numeric event ID
+
+  Response 200:
+    {
+      "success": true,
+      "items": [
+        {
+          "id": number,
+          "event_id": number,
+          "s_no": number,
+          "name": string,
+          "kg": number,
+          "gram": number
+        }
+      ]
+    }
+
+  Error 404: { "success": false, "error": "Event not found" }
+
+  Frontend: fetchVegetableItems(eventId) in src/services/api.ts
+
+
+--------------------------------------------------------------------------------
+11. VEGETABLE – Save items for event (replace all)
+--------------------------------------------------------------------------------
+  Method:  POST or PUT
+  Path:    /events/{id}/vegetable
+  Params:  id = numeric event ID
+  Body:    JSON
+    {
+      "items": [
+        { "s_no": number, "name": string, "kg": number, "gram": number }
+      ]
+    }
+
+  Response 200:
+    { "success": true, "message": "Vegetable items saved" }
+
+  Error 404: { "success": false, "error": "Event not found" }
+  Error 400: { "success": false, "error": "items must be an array" }
+
+  Frontend: saveVegetableItems(eventId, items) in src/services/api.ts (uses POST)
+
+
+================================================================================
+  QUICK REFERENCE – Method + Path
+================================================================================
+  GET    /ping
+  GET    /profile
+  POST   /profile
+  PUT    /profile
+  GET    /events
+  POST   /events
+  GET    /events/{id}
+  PUT    /events/{id}
+  GET    /events/{id}/grocery
+  POST   /events/{id}/grocery
+  PUT    /events/{id}/grocery
+  GET    /events/{id}/vegetable
+  POST   /events/{id}/vegetable
+  PUT    /events/{id}/vegetable
+
+================================================================================
+  CURL EXAMPLES (replace BASE with http://YOUR_IP/backend)
+================================================================================
+
+  # Ping
+  curl -X GET "BASE/ping"
+
+  # Get profile
+  curl -X GET "BASE/profile"
+
+  # Update profile
+  curl -X POST "BASE/profile" -H "Content-Type: application/json" -d "{\"name\":\"John\",\"mobile\":\"123\",\"address\":\"here\",\"profile_image\":null}"
+
+  # List events
+  curl -X GET "BASE/events"
+
+  # Create event
+  curl -X POST "BASE/events" -H "Content-Type: application/json" -d "{\"title\":\"Party\",\"date\":\"2025-02-10\"}"
+
+  # Get event (use real id, e.g. 1)
+  curl -X GET "BASE/events/1"
+
+  # Update event
+  curl -X PUT "BASE/events/1" -H "Content-Type: application/json" -d "{\"title\":\"Updated\",\"date\":\"2025-02-15\"}"
+
+  # Get grocery
+  curl -X GET "BASE/events/1/grocery"
+
+  # Save grocery
+  curl -X POST "BASE/events/1/grocery" -H "Content-Type: application/json" -d "{\"items\":[{\"s_no\":1,\"name\":\"Rice\",\"kg\":2,\"gram\":500}]}"
+
+  # Get vegetable
+  curl -X GET "BASE/events/1/vegetable"
+
+  # Save vegetable
+  curl -X POST "BASE/events/1/vegetable" -H "Content-Type: application/json" -d "{\"items\":[{\"s_no\":1,\"name\":\"Tomato\",\"kg\":1,\"gram\":0}]}"
+
+================================================================================
+  FRONTEND USAGE
+================================================================================
+  ProfileContext.tsx  -> fetchProfile, updateProfile
+  HomeScreen.tsx      -> fetchEvents
+  CreateEditEventScreen.tsx -> fetchEvent, createEvent, updateEvent,
+                               fetchGroceryItems, saveGroceryItems,
+                               fetchVegetableItems, saveVegetableItems
+
+================================================================================
