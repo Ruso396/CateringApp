@@ -2,23 +2,25 @@ import { GradientButton } from '@/src/components/GradientButton';
 import { COLORS, FONTS, SPACING } from '@/src/constants/theme';
 import { createDish, deleteDish, fetchDishes, updateDish } from '@/src/services/api';
 import type { Dish } from '@/src/types';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 export function AddDishScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ eventId?: string }>();
+  const eventId = params.eventId ? parseInt(params.eventId, 10) : null;
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -30,9 +32,14 @@ export function AddDishScreen() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const loadDishes = useCallback(async () => {
+    if (!eventId) {
+      Alert.alert('Error', 'Event ID is required');
+      router.back();
+      return;
+    }
     setLoading(true);
     try {
-      const list = await fetchDishes();
+      const list = await fetchDishes(eventId);
       setDishes(list);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -41,13 +48,14 @@ export function AddDishScreen() {
       setLoading(false);
       setInitialLoading(false);
     }
-  }, []);
+  }, [eventId, router]);
 
   useEffect(() => {
     loadDishes();
   }, [loadDishes]);
 
   const handleAddOrUpdate = useCallback(async () => {
+    if (!eventId) return;
     const name = dishName.trim();
     if (!name) {
       Alert.alert('Validation', 'Please enter a dish name');
@@ -57,7 +65,7 @@ export function AddDishScreen() {
     if (editingId !== null) {
       setSavingEditId(editingId);
       try {
-        const updated = await updateDish(editingId, name);
+        const updated = await updateDish(eventId, editingId, name);
         setDishes((prev) =>
           prev.map((d) => (d.id === editingId ? updated : d))
         );
@@ -75,7 +83,7 @@ export function AddDishScreen() {
 
     setCreating(true);
     try {
-      const created = await createDish(name);
+      const created = await createDish(eventId, name);
       setDishes((prev) => [created, ...prev]);
       setDishName('');
     } catch (e) {
@@ -84,7 +92,7 @@ export function AddDishScreen() {
     } finally {
       setCreating(false);
     }
-  }, [dishName, editingId]);
+  }, [dishName, editingId, eventId]);
 
   const startEdit = useCallback((item: Dish) => {
     setEditingId(item.id);
@@ -93,6 +101,7 @@ export function AddDishScreen() {
   }, []);
 
   const handleDelete = useCallback((id: number) => {
+    if (!eventId) return;
     Alert.alert('Delete Dish', 'Are you sure you want to delete this dish?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -101,7 +110,7 @@ export function AddDishScreen() {
         onPress: async () => {
           setDeletingId(id);
           try {
-            await deleteDish(id);
+            await deleteDish(eventId, id);
             setDishes((prev) => prev.filter((d) => d.id !== id));
             if (editingId === id) {
               setEditingId(null);
@@ -117,7 +126,7 @@ export function AddDishScreen() {
         },
       },
     ]);
-  }, [editingId]);
+  }, [editingId, eventId]);
 
   const isSavingAny = creating || savingEditId !== null;
 

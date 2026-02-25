@@ -20,10 +20,8 @@ export const ENDPOINTS = {
   customDesignUpload: '/custom-design/upload',
   suggestions: '/suggestions',
   suggestion: (id: number) => `/suggestions/${id}`,
-  addDish: '/add-dish',
-  getDishes: '/get-dishes',
-  updateDish: '/update-dish',
-  deleteDish: '/delete-dish',
+  dishes: (eventId: number) => `/events/${eventId}/dishes`,
+  dish: (eventId: number, dishId: number) => `/events/${eventId}/dishes/${dishId}`,
 } as const;
 
 /** Single Axios instance for all API requests. Do not create other instances. */

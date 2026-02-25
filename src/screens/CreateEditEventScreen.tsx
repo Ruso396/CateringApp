@@ -3,20 +3,21 @@ import { GradientButton } from '@/src/components/GradientButton';
 import { CalendarIcon } from '@/src/components/icons/CalendarIcon';
 import { DownloadIcon } from '@/src/components/icons/DownloadIcon';
 import { ExportIcon } from '@/src/components/icons/ExportIcon';
+import { PlusIcon } from '@/src/components/icons/PlusIcon';
 import { ShareIcon } from '@/src/components/icons/ShareIcon';
 import { ThreeDotsIcon } from '@/src/components/icons/ThreeDotsIcon';
 import { COLORS, FONTS, SPACING } from '@/src/constants/theme';
 import { useDesign } from '@/src/context/DesignContext';
 import { useProfile } from '@/src/context/ProfileContext';
 import {
-  createEvent,
-  fetchEvent,
-  fetchGroceryItems,
-  fetchSuggestions,
-  fetchVegetableItems,
-  saveGroceryItems,
-  saveVegetableItems,
-  updateEvent,
+    createEvent,
+    fetchEvent,
+    fetchGroceryItems,
+    fetchSuggestions,
+    fetchVegetableItems,
+    saveGroceryItems,
+    saveVegetableItems,
+    updateEvent,
 } from '@/src/services/api';
 import type { TableRow } from '@/src/types';
 import { generateListPdf, type PdfTableRow } from '@/src/utils/pdfExport';
@@ -27,20 +28,20 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { shareAsync } from 'expo-sharing';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
-  Animated,
-  Dimensions,
-  Keyboard,
-  KeyboardAvoidingView,
-  LayoutRectangle,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Animated,
+    Dimensions,
+    Keyboard,
+    KeyboardAvoidingView,
+    LayoutRectangle,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -1210,6 +1211,17 @@ const totalTableWidth = useMemo(() => {
     });
   }, [router, title, date, activeTab, groceryRows, vegetableRows]);
 
+  // Add Dish handler: navigates to add dish screen
+  const handleAddDish = useCallback(() => {
+    setShowMenu(false);
+    router.push({
+      pathname: '/adddish',
+      params: {
+        eventId: String(eventId),
+      },
+    });
+  }, [router, eventId]);
+
   const currentRows = activeTab === 'grocery' ? groceryRows : vegetableRows;
   const setCurrentRows = activeTab === 'grocery' ? setGroceryRows : setVegetableRows;
 
@@ -1532,6 +1544,20 @@ const handleNameTextChange = useCallback(
                       ]}
                     >
                       Preview
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* add dish option */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handleAddDish}
+                    activeOpacity={0.6}
+                  >
+                    <PlusIcon size={18} color="black" />
+                    <Text style={styles.menuItemText}>
+                      Add Dish
                     </Text>
                   </TouchableOpacity>
 

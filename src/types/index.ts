@@ -28,6 +28,7 @@ export type ExportType = 'grocery' | 'vegetable';
 
 export interface Dish {
   id: number;
+  event_id: number;
   dish_name: string;
   created_at?: string;
 }

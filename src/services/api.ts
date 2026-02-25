@@ -1,5 +1,5 @@
 /// <reference path="../../global.d.ts" />
-import { apiClient, ENDPOINTS, BASE_URL } from '@/src/config/api';
+import { apiClient, BASE_URL, ENDPOINTS } from '@/src/config/api';
 import type { Dish, Event, Profile, TableRow } from '@/src/types';
 
 /** Backend connectivity test – GET /ping. Use to verify API is reachable (e.g. from device). */
@@ -242,8 +242,8 @@ export async function deleteSuggestion(id: number): Promise<void> {
 }
 
 // Dishes
-export async function fetchDishes(): Promise<Dish[]> {
-  const url = BASE_URL + ENDPOINTS.getDishes;
+export async function fetchDishes(eventId: number): Promise<Dish[]> {
+  const url = BASE_URL + ENDPOINTS.dishes(eventId);
   const res = await fetch(url, {
     method: 'GET',
     headers: {
@@ -262,10 +262,10 @@ export async function fetchDishes(): Promise<Dish[]> {
   return Array.isArray(data.data) ? (data.data as Dish[]) : [];
 }
 
-export async function createDish(dishName: string): Promise<Dish> {
+export async function createDish(eventId: number, dishName: string): Promise<Dish> {
   const name = dishName.trim();
   if (!name) throw new Error('Dish name is required');
-  const url = BASE_URL + ENDPOINTS.addDish;
+  const url = BASE_URL + ENDPOINTS.dishes(eventId);
   const res = await fetch(url, {
     method: 'POST',
     headers: {
@@ -286,18 +286,19 @@ export async function createDish(dishName: string): Promise<Dish> {
   return data.data as Dish;
 }
 
-export async function updateDish(id: number, dishName: string): Promise<Dish> {
+export async function updateDish(eventId: number, dishId: number, dishName: string): Promise<Dish> {
   const name = dishName.trim();
-  if (!id || id <= 0) throw new Error('Invalid dish ID');
+  if (!eventId || eventId <= 0) throw new Error('Invalid event ID');
+  if (!dishId || dishId <= 0) throw new Error('Invalid dish ID');
   if (!name) throw new Error('Dish name is required');
-  const url = BASE_URL + ENDPOINTS.updateDish;
+  const url = BASE_URL + ENDPOINTS.dish(eventId, dishId);
   const res = await fetch(url, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    body: JSON.stringify({ id, dish_name: name }),
+    body: JSON.stringify({ dish_name: name }),
   });
   if (!res.ok) {
     const txt = await res.text();
@@ -311,16 +312,15 @@ export async function updateDish(id: number, dishName: string): Promise<Dish> {
   return data.data as Dish;
 }
 
-export async function deleteDish(id: number): Promise<void> {
-  if (!id || id <= 0) throw new Error('Invalid dish ID');
-  const url = BASE_URL + ENDPOINTS.deleteDish;
+export async function deleteDish(eventId: number, dishId: number): Promise<void> {
+  if (!eventId || eventId <= 0) throw new Error('Invalid event ID');
+  if (!dishId || dishId <= 0) throw new Error('Invalid dish ID');
+  const url = BASE_URL + ENDPOINTS.dish(eventId, dishId);
   const res = await fetch(url, {
-    method: 'POST',
+    method: 'DELETE',
     headers: {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
-    body: JSON.stringify({ id }),
   });
   if (!res.ok) {
     const txt = await res.text();
