@@ -36,7 +36,6 @@ export function ProfileScreen() {
   const [mobile, setMobile] = useState('');
   const [address, setAddress] = useState('');
   const [saving, setSaving] = useState(false);
-  /** Local URI or base64 data URL shown immediately after pick (before API completes) */
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -50,74 +49,36 @@ export function ProfileScreen() {
 
   const displayUri = localImageUri ?? profile?.profile_image ?? null;
 
+  // =========================
+  // IMAGE PICK DISABLED TEMP
+  // =========================
+
+  /*
   const handlePickedAsset = useCallback(
     async (asset: ImagePicker.ImagePickerAsset) => {
-      const uri = asset.uri;
-      const base64 = asset.base64;
-      setLocalImageUri(uri);
-      setUploadingImage(true);
-      try {
-        const profileImageValue =
-          base64 != null ? `data:image/jpeg;base64,${base64}` : null;
-        const result = await saveProfile({
-          name: profile?.name ?? name,
-          mobile: profile?.mobile ?? mobile,
-          address: profile?.address ?? address,
-          profile_image: profileImageValue,
-        });
-        // Image upload successful - clear local URI so it uses the saved profile image
-        setLocalImageUri(null);
-      } catch (err: unknown) {
-        // Reset on error
-        setLocalImageUri(null);
-        const ax = err as { response?: { data?: { error?: string } }; message?: string };
-        const message =
-          ax?.response?.data?.error || ax?.message || 'Failed to update profile image. Please try again.';
-        Alert.alert('Error', message);
-      } finally {
-        setUploadingImage(false);
-      }
+      ...
     },
     [profile, name, mobile, address, saveProfile]
   );
+  */
 
+  /*
   const pickImageFromLibrary = useCallback(async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission required',
-        'Please allow access to your photo library to change your profile picture.'
-      );
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync(IMAGE_PICKER_OPTIONS);
-    if (!result.canceled && result.assets[0]) {
-      await handlePickedAsset(result.assets[0]);
-    }
+    ...
   }, [handlePickedAsset]);
+  */
 
+  /*
   const pickImageFromCamera = useCallback(async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission required',
-        'Please allow camera access to take a profile picture.'
-      );
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync(IMAGE_PICKER_OPTIONS);
-    if (!result.canceled && result.assets[0]) {
-      await handlePickedAsset(result.assets[0]);
-    }
+    ...
   }, [handlePickedAsset]);
+  */
 
+  /*
   const handlePickImage = useCallback(() => {
-    Alert.alert('Profile photo', 'Choose an option', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Take photo', onPress: pickImageFromCamera },
-      { text: 'Choose from library', onPress: pickImageFromLibrary },
-    ]);
+    ...
   }, [pickImageFromCamera, pickImageFromLibrary]);
+  */
 
   const handleSave = async () => {
     setSaving(true);
@@ -133,8 +94,6 @@ export function ProfileScreen() {
       setSaving(false);
     }
   };
-
-  
 
   if (loading && !profile) {
     return (
@@ -153,7 +112,6 @@ export function ProfileScreen() {
       <KeyboardAvoidingView
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         <ScrollView
           style={styles.scroll}
@@ -163,9 +121,9 @@ export function ProfileScreen() {
         <View style={styles.avatarSection}>
           <TouchableOpacity
             style={styles.avatarTouchable}
-            onPress={handlePickImage}
-            disabled={uploadingImage}
-            activeOpacity={0.85}
+            // onPress={handlePickImage}
+            disabled={true}   // TEMP DISABLED
+            activeOpacity={1}
           >
             {displayUri ? (
               <Image source={{ uri: displayUri }} style={styles.avatar} />
@@ -176,6 +134,9 @@ export function ProfileScreen() {
                 </Text>
               </View>
             )}
+
+            {/* CAMERA ICON TEMP COMMENT */}
+            {/*
             {uploadingImage ? (
               <View style={styles.cameraOverlay}>
                 <ActivityIndicator color="#FFFFFF" size="small" />
@@ -185,6 +146,7 @@ export function ProfileScreen() {
                 <CameraIcon size={22} color="#FFFFFF" />
               </View>
             )}
+            */}
           </TouchableOpacity>
         </View>
 
@@ -194,27 +156,32 @@ export function ProfileScreen() {
             style={styles.input}
             value={name}
             onChangeText={setName}
+            editable={false}   // TEMP DISABLED
             placeholder="உங்கள் பெயர்"
             placeholderTextColor={COLORS.textSecondary}
           />
         </View>
+
         <View style={styles.field}>
           <Text style={styles.label}>கைபேசி எண்</Text>
           <TextInput
             style={styles.input}
             value={mobile}
             onChangeText={setMobile}
+            editable={false}   // TEMP DISABLED
             placeholder="கைபேசி எண் உள்ளிடவும்"
             placeholderTextColor={COLORS.textSecondary}
             keyboardType="phone-pad"
           />
         </View>
+
         <View style={styles.field}>
           <Text style={styles.label}>முகவரி</Text>
           <TextInput
             style={[styles.input, styles.inputMultiline]}
             value={address}
             onChangeText={setAddress}
+            editable={false}   // TEMP DISABLED
             placeholder="முகவரி உள்ளிடவும்"
             placeholderTextColor={COLORS.textSecondary}
             multiline
@@ -222,14 +189,16 @@ export function ProfileScreen() {
           />
         </View>
 
+        {/* SAVE BUTTON TEMP COMMENT */}
+        {/*
         <GradientButton
           title="சேமிக்க"
           onPress={handleSave}
           loading={saving}
           style={styles.saveBtn}
         />
+        */}
 
-       
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -331,20 +300,5 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     marginTop: SPACING.md,
-  },
-  customDesignBtn: {
-    marginTop: SPACING.md,
-    paddingVertical: 12,
-    paddingHorizontal: SPACING.md,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  customDesignBtnText: {
-    fontSize: FONTS.bodySize,
-    fontWeight: '600',
-    color: COLORS.primary,
   },
 });

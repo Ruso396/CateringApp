@@ -3,7 +3,6 @@ import { GradientButton } from '@/src/components/GradientButton';
 import { CalendarIcon } from '@/src/components/icons/CalendarIcon';
 import { DownloadIcon } from '@/src/components/icons/DownloadIcon';
 import { ExportIcon } from '@/src/components/icons/ExportIcon';
-import { SuggestionIcon } from '@/src/components/icons/SuggestionIcon';
 import { ShareIcon } from '@/src/components/icons/ShareIcon';
 import { ThreeDotsIcon } from '@/src/components/icons/ThreeDotsIcon';
 import { COLORS, FONTS, SPACING } from '@/src/constants/theme';
@@ -24,14 +23,16 @@ import { generateListPdf, type PdfTableRow } from '@/src/utils/pdfExport';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as FileSystem from 'expo-file-system';
-import { StorageAccessFramework } from 'expo-file-system';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { shareAsync } from 'expo-sharing';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
+  Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
+  LayoutRectangle,
   Modal,
   Platform,
   ScrollView,
@@ -43,8 +44,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const HEADERS = ['எ', 'விபரம்', 'கி', 'கிரா', 'அ'] as const;
-const FLEX_WIDTHS = [1, 6, 1.5, 1.5, 1.8];
+const HEADERS = ['எ', 'பொருள்கள்', 'கி', 'கிரா', 'அ'] as const;
+// minimum pixel widths for each column when auto-sizing
+const MIN_WIDTHS = [40, 200, 80, 80, 100];
+
 // Header Component - displays title and date in preview format
 function HeaderSection({
   title,
@@ -213,60 +216,52 @@ function EditableRow({
   index,
   onChange,
   onFocusNext,
-  suggestions,
-  showSuggestions,
   onNameFocus,
   onNameBlur,
   onNameTextChange,
-  onSelectSuggestion,
+  inputRef,
 }: {
   row: TableRow;
   index: number;
   onChange: (index: number, field: keyof TableRow, value: string | number) => void;
   onFocusNext: (index: number, addNew: boolean) => void;
-  suggestions: string[];
-  showSuggestions: boolean;
+  // note: suggestions are now handled in parent overlay
   onNameFocus: (index: number) => void;
   onNameBlur: () => void;
   onNameTextChange: (index: number, value: string) => void;
-  onSelectSuggestion: (index: number, value: string) => void;
+  // ref forwarded from parent so we can re-measure on scroll/keyboard
+  inputRef: React.RefObject<View | null>;
 }) {
+  const localRef = inputRef || React.createRef<View>();
+
   return (
     <View style={tableStyles.row}>
-      <View style={[tableStyles.cell, { flex: 1 }]}>
+      <View style={[tableStyles.cell, { width: MIN_WIDTHS[0] }]}>  
         <Text style={tableStyles.cellText}>{row.s_no}</Text>
       </View>
-      <View style={[tableStyles.cellInput, { flex: 5 }]}>
-        <View style={tableStyles.nameCell}>
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[1] }]}>  
+        <View
+          ref={localRef}
+          style={tableStyles.nameCell}
+        >
           <TextInput
             value={row.name}
-            onFocus={() => onNameFocus(index)}
+            onFocus={() => {
+              onNameFocus(index);
+            }}
             onBlur={onNameBlur}
             onChangeText={(v) => onNameTextChange(index, v)}
             placeholder="—"
+            multiline={true}
+            // do not constrain lines, let input grow
             style={tableStyles.nameInput}
             onEndEditing={() => {
               if (row.name.trim()) onFocusNext(index, true);
             }}
           />
-
-          {showSuggestions && suggestions.length > 0 && (
-            <View style={tableStyles.suggestionDropdown}>
-              {suggestions.map((item, i) => (
-                <TouchableOpacity
-                  key={`${item}-${i}`}
-                  style={tableStyles.suggestionItem}
-                  onPress={() => onSelectSuggestion(index, item)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={tableStyles.suggestionText}>{item}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
         </View>
       </View>
-      <View style={[tableStyles.cellInput, { flex: 1.5 }]}>
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[2] }]}>  
         <TextInput
           value={row.kg === 0 ? '' : String(row.kg)}
           onChangeText={(v) => onChange(index, 'kg', v.replace(/[^0-9.]/g, '') || '0')}
@@ -275,7 +270,7 @@ function EditableRow({
           style={tableStyles.input}
         />
       </View>
-      <View style={[tableStyles.cellInput, { flex: 1.5 }]}>
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[3] }]}>  
         <TextInput
           value={row.gram === 0 ? '' : String(row.gram)}
           onChangeText={(v) => onChange(index, 'gram', v.replace(/[^0-9.]/g, '') || '0')}
@@ -284,7 +279,7 @@ function EditableRow({
           style={tableStyles.input}
         />
       </View>
-      <View style={[tableStyles.cellInput, { flex: 1.8 }]}>
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[4] }]}>  
         <TextInput
           value={row.alavu}
           onChangeText={(v) => onChange(index, 'alavu', v)}
@@ -296,31 +291,82 @@ function EditableRow({
   );
 }
 
+
+// overlay component rendered absolutely within vertical scroll view, below the horizontal table
+function SuggestionOverlay({
+  layout,
+  suggestions,
+  query,
+  onSelect,
+  onAdd,
+}: {
+  layout: LayoutRectangle;
+  suggestions: string[];
+  query: string;
+  onSelect: (value: string) => void;
+  onAdd: () => void;
+}) {
+  if (!layout) return null;
+
+  const filtered = suggestions.filter((item) =>
+    item.toLowerCase().startsWith(query.toLowerCase())
+  );
+
+  if (filtered.length === 0 && !query) {
+    // nothing to show
+    return null;
+  }
+
+  return (
+    <View
+      style={[
+        suggestionStyles.overlay,
+        {
+          left: layout.x,
+          top: layout.y + layout.height,
+          width: MIN_WIDTHS[1],
+        },
+      ]}
+    >
+      <TouchableOpacity style={suggestionStyles.item} activeOpacity={0.7} onPress={onAdd}>
+        <Text style={[suggestionStyles.text, suggestionStyles.addSuggestion]}>+ Add Suggestion</Text>
+      </TouchableOpacity>
+
+      {filtered.map((item, i) => (
+        <TouchableOpacity
+          key={`${item}-${i}`}
+          style={suggestionStyles.item}
+          onPress={() => onSelect(item)}
+          activeOpacity={0.7}
+        >
+          <Text style={suggestionStyles.text}>{item}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 const tableStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    minHeight: 40,
-    alignItems: 'center',
-  },
-  cell: {
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRightWidth: 0,
-    borderRightColor: 'transparent',
-    minHeight: 40,
-  },
-  cellInput: {
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRightWidth: 0,
-    borderRightColor: 'transparent',
-    minHeight: 40,
-  },
-  cellText: {
+ row: {
+  flexDirection: 'row',
+  borderBottomWidth: 1,
+  borderBottomColor: '#F0F0F0',
+  minHeight: 40,
+  alignItems: 'stretch',
+},
+cell: {
+  paddingHorizontal: 12,
+  justifyContent: 'center',
+  alignItems: 'center',
+  minHeight: 40,
+},
+
+cellInput: {
+  paddingHorizontal: 12,
+  justifyContent: 'center',
+  alignItems: 'center',
+  minHeight: 40,
+},  cellText: {
     fontSize: FONTS.smallSize,
     color: COLORS.text,
     textAlign: 'center',
@@ -344,32 +390,35 @@ const tableStyles = StyleSheet.create({
   },
   nameCell: {
     width: '100%',
-    position: 'relative',
-    zIndex: 50,
   },
-  suggestionDropdown: {
+});
+
+// styles used by the floating suggestion overlay
+const suggestionStyles = StyleSheet.create({
+  overlay: {
     position: 'absolute',
-    top: 36,
-    left: 0,
-    right: 0,
-    maxHeight: 160,
+    zIndex: 9999,
+    elevation: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E5E7EB',
     borderRadius: 8,
+    maxHeight: 160,
     overflow: 'hidden',
-    zIndex: 100,
-    elevation: 8,
   },
-  suggestionItem: {
+  item: {
     paddingVertical: 10,
     paddingHorizontal: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  suggestionText: {
+  text: {
     fontSize: FONTS.smallSize,
     color: COLORS.text,
+  },
+  addSuggestion: {
+    color: '#3B82F6',
+    fontWeight: '600',
   },
 });
 
@@ -540,8 +589,26 @@ export function CreateEditEventScreen() {
   const { profile } = useProfile();
   const { selectedDesign, customDesignUrl, refreshCustomDesign } = useDesign();
 
+  // calculate table width so horizontal scroll area expands beyond screen
+  const windowWidth = Dimensions.get('window').width;
+const totalTableWidth = useMemo(() => {
+  // sum of all column widths; scrollview width must exactly match this value
+  return MIN_WIDTHS.reduce((acc, w) => acc + w, 0);
+}, []);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [focusedNameRowIndex, setFocusedNameRowIndex] = useState<number | null>(null);
+  const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
+  const [focusedInputLayout, setFocusedInputLayout] = useState<LayoutRectangle | null>(null);
+  const [currentQuery, setCurrentQuery] = useState('');
+  // root view ref for measuring layout relative to this container
+  // vertical ScrollView container ref used for coordinate measurements
+  // treat as View because ScrollView doesn't expose measureInWindow in types
+  const scrollRef = useRef<View | null>(null);
+  // wrapper inside vertical ScrollView; measurements will be relative to this
+  const scrollContentRef = useRef<View | null>(null);
+
+  // refs to the name cell wrappers for each row so we can re-measure on scroll/keyboard
+  // note: React.createRef returns RefObject<View | null>, so allow null
+  const rowRefs = useRef<React.RefObject<View | null>[]>([]);
   const suggestionReqId = useRef(0);
 
   useFocusEffect(
@@ -1033,7 +1100,7 @@ export function CreateEditEventScreen() {
 
         // First time only
         if (!directoryUri) {
-          const permissions = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+          const permissions = await (FileSystem as any).StorageAccessFramework.requestDirectoryPermissionsAsync();
 
           if (!permissions.granted) {
             Alert.alert('Permission required to access Downloads folder');
@@ -1041,11 +1108,11 @@ export function CreateEditEventScreen() {
           }
 
           directoryUri = permissions.directoryUri;
-          await AsyncStorage.setItem('downloadDirectoryUri', directoryUri);
+          await AsyncStorage.setItem('downloadDirectoryUri', directoryUri!);
         }
 
         // Copy to cache
-        const tempPath = FileSystem.cacheDirectory + fileName;
+        const tempPath = (FileSystem as any).cacheDirectory + fileName;
 
         await FileSystem.copyAsync({
           from: uri,
@@ -1053,19 +1120,19 @@ export function CreateEditEventScreen() {
         });
 
         const base64 = await FileSystem.readAsStringAsync(tempPath, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: 'base64' as any,
         });
 
-        const newFileUri = await StorageAccessFramework.createFileAsync(
+        const newFileUri = await (FileSystem as any).StorageAccessFramework.createFileAsync(
           directoryUri,
           fileName.replace('.pdf', ''),
           'application/pdf'
         );
 
-        await StorageAccessFramework.writeAsStringAsync(
+        await (FileSystem as any).StorageAccessFramework.writeAsStringAsync(
           newFileUri,
           base64,
-          { encoding: FileSystem.EncodingType.Base64 }
+          { encoding: 'base64' as any }
         );
 
         Alert.alert('Success', 'PDF saved to Downloads folder');
@@ -1116,53 +1183,131 @@ export function CreateEditEventScreen() {
   const currentRows = activeTab === 'grocery' ? groceryRows : vegetableRows;
   const setCurrentRows = activeTab === 'grocery' ? setGroceryRows : setVegetableRows;
 
+
+  const showDropdown =
+    focusedRowIndex !== null &&
+    focusedInputLayout !== null &&
+    currentQuery.length > 0;
+
   const handleNameFocus = useCallback((index: number) => {
-    setFocusedNameRowIndex(index);
+    setFocusedRowIndex(index);
+    setSuggestions([]);
+    setCurrentQuery('');
+
+    // measure relative to inner scroll content view
+    const ref = rowRefs.current[index];
+    const container = scrollContentRef.current;
+    if (ref && ref.current && container) {
+      ref.current.measureLayout(
+        container,
+        (x, y, width, height) => {
+          setFocusedInputLayout({ x, y, width, height });
+        },
+        () => {
+          /* measure failure - ignore */
+        }
+      );
+    }
   }, []);
 
   const handleNameBlur = useCallback(() => {
-    // Small delay allows tapping a suggestion before dropdown disappears
     setTimeout(() => {
-      setFocusedNameRowIndex(null);
+      if (focusedRowIndex === null) return;
+      setFocusedRowIndex(null);
+      setFocusedInputLayout(null);
       setSuggestions([]);
-    }, 120);
-  }, []);
+      setCurrentQuery('');
+    }, 150);
+  }, [focusedRowIndex]);
 
-  const handleNameTextChange = useCallback(
-    async (index: number, value: string) => {
-      updateRow(index, 'name', value, currentRows, setCurrentRows);
-
-      const q = value.trim();
-      if (q.length < 1) {
-        setSuggestions([]);
-        return;
+  // re-measure whenever scroll or keyboard events happen so overlay tracks the input
+  const handleScroll = useCallback(() => {
+    if (focusedRowIndex !== null) {
+      const ref = rowRefs.current[focusedRowIndex];
+      const container = scrollContentRef.current;
+      if (ref && ref.current && container) {
+        ref.current.measureLayout(
+          container,
+          (x, y, width, height) => {
+            setFocusedInputLayout({ x, y, width, height });
+          },
+          () => {
+            /* ignore measurement error */
+          }
+        );
       }
+    }
+  }, [focusedRowIndex]);
 
-      const reqId = ++suggestionReqId.current;
-      try {
-        const results = await fetchSuggestions(q);
-        if (reqId !== suggestionReqId.current) return; // ignore stale response
-        setSuggestions(results);
-      } catch (e) {
-        if (reqId !== suggestionReqId.current) return;
-        console.warn('[Suggestions] fetch failed:', e instanceof Error ? e.message : String(e));
-        setSuggestions([]);
-      }
-    },
-    [currentRows, setCurrentRows, updateRow]
-  );
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', handleScroll);
+    const hideSub = Keyboard.addListener('keyboardDidHide', handleScroll);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [handleScroll]);
 
+const handleNameTextChange = useCallback(
+  async (index: number, value: string) => {
+    updateRow(index, 'name', value, currentRows, setCurrentRows);
+
+    const q = value.trim();
+    setCurrentQuery(q); // 🔥 THIS WAS MISSING
+
+    // re-measure when the focused input changes value (height/position may shift)
+    if (focusedRowIndex === index) {
+      handleScroll();
+    }
+
+    if (q.length < 1) {
+      setSuggestions([]);
+      return;
+    }
+
+    const reqId = ++suggestionReqId.current;
+    try {
+      const results = await fetchSuggestions(q);
+      if (reqId !== suggestionReqId.current) return;
+      setSuggestions(results);
+    } catch (e) {
+      if (reqId !== suggestionReqId.current) return;
+      setSuggestions([]);
+    }
+  },
+  [currentRows, setCurrentRows, updateRow, handleScroll, focusedRowIndex]
+);
   const handleSelectSuggestion = useCallback(
     (index: number, value: string) => {
       updateRow(index, 'name', value, currentRows, setCurrentRows);
       setSuggestions([]);
-      setFocusedNameRowIndex(null);
+      setFocusedRowIndex(null);
+      setFocusedInputLayout(null);
+      setCurrentQuery('');
     },
     [currentRows, setCurrentRows, updateRow]
   );
 
   if (loading) {
     return (
+      <View style={{ flex: 1 }}>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <HeaderSection
+            title={title}
+            date={date}
+            isEdit={isEdit}
+            onEditPress={handleOpenEditModal}
+          />
+          <View style={styles.centered}>
+            <Text style={styles.loadingText}>Loading…</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <HeaderSection
           title={title}
@@ -1170,32 +1315,26 @@ export function CreateEditEventScreen() {
           isEdit={isEdit}
           onEditPress={handleOpenEditModal}
         />
-        <View style={styles.centered}>
-          <Text style={styles.loadingText}>Loading…</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <HeaderSection
-        title={title}
-        date={date}
-        isEdit={isEdit}
-        onEditPress={handleOpenEditModal}
-      />
-
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
+          <ScrollView
+            ref={(r) => {
+              // preserve reference for potential future use (e.g. scrolling programmatically)
+              scrollRef.current = r as unknown as View | null;
+            }}
+            style={styles.scroll}
+            contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}         // allow child to capture horizontal gesture
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          >
+            {/* wrapper used for layout measurements */}
+            <View ref={scrollContentRef} collapsable={false}>
 
           {/* ============== DESIGN PREVIEW SECTION ============== */}
           <View style={styles.designPreviewSection}>
@@ -1348,19 +1487,7 @@ export function CreateEditEventScreen() {
                   </TouchableOpacity>
 
                   <View style={styles.menuDivider} />
-
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={() => router.push('/suggestions')}
-                    activeOpacity={0.6}
-                  >
-                    <SuggestionIcon size={18} color="#000000" />
-
-                    <Text style={styles.menuItemText}>
-                      பரிந்துரை
-                    </Text>
-                  </TouchableOpacity>            
-                      </Animated.View>
+                </Animated.View>
               )}
             </View>
           </View>
@@ -1373,38 +1500,78 @@ export function CreateEditEventScreen() {
             />
           )}
 
-          <View style={styles.tableWrap}>
-            <View style={styles.headerRow}>
-              {HEADERS.map((h, i) => (
-                <View
-                  key={h}
-                  style={[
-                    styles.headerCell,
-                    { flex: FLEX_WIDTHS[i] },
-                    i === 0 && { borderTopLeftRadius: 8 },
-                    i === HEADERS.length - 1 && { borderTopRightRadius: 8 },
-                  ]}
-                >
-                  <Text style={styles.headerText}>{h}</Text>
-                </View>
-              ))}
-            </View>
-            {currentRows.map((row, index) => (
-              <EditableRow
-                key={index}
-                row={row}
-                index={index}
-                onChange={(idx, field, value) => updateRow(idx, field, value, currentRows, setCurrentRows)}
-                onFocusNext={(_, addNew) => addNew && ensureNextRow(setCurrentRows)}
-                suggestions={suggestions}
-                showSuggestions={focusedNameRowIndex === index}
-                onNameFocus={handleNameFocus}
-                onNameBlur={handleNameBlur}
-                onNameTextChange={handleNameTextChange}
-                onSelectSuggestion={handleSelectSuggestion}
-              />
-            ))}
+          {/* horizontal table container that can grow based on content */}
+     {/* ===== HORIZONTAL TABLE ===== */}
+<View style={{ marginBottom: SPACING.lg, position: 'relative' }}>
+
+  <ScrollView
+    horizontal
+    showsHorizontalScrollIndicator
+    directionalLockEnabled
+    nestedScrollEnabled
+    keyboardShouldPersistTaps="handled"
+    onScroll={handleScroll}
+    scrollEventThrottle={16}
+  >
+    <View
+      style={{
+        width: totalTableWidth,
+      }}
+    >
+      {/* HEADER */}
+      <View style={styles.headerRow}>
+        {HEADERS.map((h, i) => (
+          <View
+            key={h}
+            style={[
+              styles.headerCell,
+              { width: MIN_WIDTHS[i] },
+            ]}
+          >
+            <Text style={styles.headerText}>{h}</Text>
           </View>
+        ))}
+      </View>
+
+      {/* ROWS */}
+      {currentRows.map((row, index) => {
+        // ensure there is a ref object for this index
+        if (!rowRefs.current[index]) {
+          rowRefs.current[index] = React.createRef<View | null>();
+        }
+        return (
+          <EditableRow
+            key={index}
+            row={row}
+            index={index}
+            onChange={(idx, field, value) =>
+              updateRow(idx, field, value, currentRows, setCurrentRows)
+            }
+            onFocusNext={(_, addNew) =>
+              addNew && ensureNextRow(setCurrentRows)
+            }
+            onNameFocus={handleNameFocus}
+            onNameBlur={handleNameBlur}
+            onNameTextChange={handleNameTextChange}
+            inputRef={rowRefs.current[index]}
+          />
+        );
+      })}
+    </View>
+  </ScrollView>
+
+</View>
+
+          {/* suggestion dropdown below table */}
+          {showDropdown && focusedInputLayout && (
+            <SuggestionOverlay
+              layout={focusedInputLayout}
+              suggestions={suggestions}
+              query={currentQuery}
+              onSelect={(val) => handleSelectSuggestion(focusedRowIndex!, val)}
+              onAdd={() => router.push('/suggestions')}
+            />
+          )}
 
           <View style={styles.footer}>
             <GradientButton
@@ -1415,6 +1582,7 @@ export function CreateEditEventScreen() {
               style={styles.saveBtn}
             />
           </View>
+            </View> {/* end scrollContentRef wrapper */}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1428,6 +1596,7 @@ export function CreateEditEventScreen() {
         onClose={() => setShowEditModal(false)}
       />
     </SafeAreaView>
+  </View>
   );
 }
 
@@ -1644,6 +1813,17 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0,
     elevation: 0,
+    alignSelf: 'flex-start',
+    // width removed to allow contentContainer minWidth to drive width
+  },
+  tableContent: {
+    alignSelf: 'flex-start',
+    // minWidth enforced inline via totalTableWidth
+  },
+  tableInner: {
+    flexDirection: 'column',
+    alignSelf: 'flex-start',
+    // no width; uses content minWidth
   },
   headerRow: {
     flexDirection: 'row',
@@ -1651,6 +1831,7 @@ const styles = StyleSheet.create({
     minHeight: 40,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    flexShrink: 0,            // DO NOT shrink to fit screen
   },
   headerCell: {
     paddingHorizontal: 12,
@@ -1711,3 +1892,4 @@ const styles = StyleSheet.create({
     color: '#3B7DC4',
   },
 });
+
