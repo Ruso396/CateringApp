@@ -1180,6 +1180,36 @@ const totalTableWidth = useMemo(() => {
     }
   }, [generatePdfForCurrentTab, activeTab]);
 
+  // Preview handler: navigates to preview screen with current data
+  const handlePreview = useCallback(() => {
+    setShowMenu(false);
+    const rows = activeTab === 'grocery' ? groceryRows : vegetableRows;
+    const filtered = rows
+      .filter((r) => r.name.trim() || r.kg > 0 || r.gram > 0)
+      .map((r, i) => ({
+        s_no: i + 1,
+        name: r.name,
+        kg: r.kg,
+        gram: r.gram,
+        alavu: r.alavu,
+      }));
+
+    if (filtered.length === 0) {
+      Alert.alert('No Data', `No ${activeTab} items to preview. Please add some items first.`);
+      return;
+    }
+
+    router.push({
+      pathname: '/preview',
+      params: {
+        title: title.trim(),
+        date: date ? date.toISOString().slice(0, 10) : '',
+        type: activeTab,
+        items: JSON.stringify(filtered),
+      },
+    });
+  }, [router, title, date, activeTab, groceryRows, vegetableRows]);
+
   const currentRows = activeTab === 'grocery' ? groceryRows : vegetableRows;
   const setCurrentRows = activeTab === 'grocery' ? setGroceryRows : setVegetableRows;
 
@@ -1483,6 +1513,25 @@ const handleNameTextChange = useCallback(
                       ]}
                     >
                       {sharing ? 'பகிரப்படுகிறது...' : 'பகிர்வு'}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* preview option - last item */}
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={handlePreview}
+                    disabled={!title.trim()}
+                    activeOpacity={0.6}
+                  >
+                    <Text
+                      style={[
+                        styles.menuItemText,
+                        !title.trim() && styles.menuItemTextDisabled,
+                      ]}
+                    >
+                      Preview
                     </Text>
                   </TouchableOpacity>
 
