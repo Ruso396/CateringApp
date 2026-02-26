@@ -5,19 +5,22 @@ import { DownloadIcon } from '@/src/components/icons/DownloadIcon';
 import { ExportIcon } from '@/src/components/icons/ExportIcon';
 import { PlusIcon } from '@/src/components/icons/PlusIcon';
 import { ShareIcon } from '@/src/components/icons/ShareIcon';
+import { EyeIcon } from '@/src/components/icons/EyeIcon';
+import { BackIcon } from '@/src/components/icons/BackIcon';
 import { ThreeDotsIcon } from '@/src/components/icons/ThreeDotsIcon';
 import { COLORS, FONTS, SPACING } from '@/src/constants/theme';
 import { useDesign } from '@/src/context/DesignContext';
 import { useProfile } from '@/src/context/ProfileContext';
+
 import {
-    createEvent,
-    fetchEvent,
-    fetchGroceryItems,
-    fetchSuggestions,
-    fetchVegetableItems,
-    saveGroceryItems,
-    saveVegetableItems,
-    updateEvent,
+  createEvent,
+  fetchEvent,
+  fetchGroceryItems,
+  fetchSuggestions,
+  fetchVegetableItems,
+  saveGroceryItems,
+  saveVegetableItems,
+  updateEvent,
 } from '@/src/services/api';
 import type { TableRow } from '@/src/types';
 import { generateListPdf, type PdfTableRow } from '@/src/utils/pdfExport';
@@ -28,26 +31,26 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { shareAsync } from 'expo-sharing';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Keyboard,
-    KeyboardAvoidingView,
-    LayoutRectangle,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Dimensions,
+  Keyboard,
+  KeyboardAvoidingView,
+  LayoutRectangle,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const HEADERS = ['எ', 'பொருள்கள்', 'கி', 'கிரா', 'அ'] as const;
+const HEADERS = ['எ', 'பொருள்கள்', 'கிலோ', 'கிராம்', 'அலகு/லிட்டர்'] as const;
 // minimum pixel widths for each column when auto-sizing
-const MIN_WIDTHS = [40, 200, 80, 80, 100];
+const MIN_WIDTHS = [70, 200, 80, 80, 100];
 
 // Header Component - displays title and date in preview format
 function HeaderSection({
@@ -64,38 +67,38 @@ function HeaderSection({
   const router = useRouter();
 
   return (
-<View style={headerSectionStyles.container}>
-  <TouchableOpacity
-    style={headerSectionStyles.backButton}
-    onPress={() => router.back()}
-    activeOpacity={0.6}
-  >
-    <Text style={headerSectionStyles.backArrow}>←</Text>
-  </TouchableOpacity>
+    <View style={headerSectionStyles.container}>
+      <TouchableOpacity
+        style={headerSectionStyles.backButton}
+        onPress={() => router.back()}
+        activeOpacity={0.6}
+      >
+        <Text style={headerSectionStyles.backArrow}>←</Text>
+      </TouchableOpacity>
 
-  <TouchableOpacity
-    style={headerSectionStyles.content}
-    activeOpacity={0.7}
-    onPress={onEditPress}
-  >
-    <Text style={headerSectionStyles.title} numberOfLines={1}>
-      {title || 'நிகழ்வின் பெயர்'}
-    </Text>
+      <TouchableOpacity
+        style={headerSectionStyles.content}
+        activeOpacity={0.7}
+        onPress={onEditPress}
+      >
+        <Text style={headerSectionStyles.title} numberOfLines={1}>
+          {title || 'நிகழ்வின் பெயர்'}
+        </Text>
 
-    <Text style={headerSectionStyles.date}>
-      {date
-        ? date.toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          })
-        : 'தேதி'}
-    </Text>
-  </TouchableOpacity>
+        <Text style={headerSectionStyles.date}>
+          {date
+            ? date.toLocaleDateString('en-IN', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+            : 'தேதி'}
+        </Text>
+      </TouchableOpacity>
 
-  {/* balance space */}
-  <View style={{ width: 40 }} />
-</View>
+      {/* balance space */}
+      <View style={{ width: 40 }} />
+    </View>
   );
 }
 
@@ -108,6 +111,7 @@ function EditHeaderModal({
   onDateChange,
   onSave,
   onClose,
+  canClose = true,
 }: {
   visible: boolean;
   title: string;
@@ -116,14 +120,16 @@ function EditHeaderModal({
   onDateChange: (date: Date) => void;
   onSave: (newTitle: string, newDate: Date | null) => Promise<void>;
   onClose: () => void;
+  canClose?: boolean;
 }) {
+  const router = useRouter();   // ✅ THIS LINE ADD
+
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
-  const [tempDate, setTempDate] = useState<Date | null>(date);
-
+  const [tempDate, setTempDate] = useState<Date>(date ?? new Date());
   useEffect(() => {
     setTempTitle(title);
-    setTempDate(date);
+    setTempDate(date ?? new Date());
   }, [title, date, visible]);
 
   const handleSave = async () => {
@@ -143,10 +149,23 @@ function EditHeaderModal({
     <Modal visible={visible} animationType="slide" transparent={true}>
       <SafeAreaView style={modalStyles.container} edges={['top', 'bottom']}>
         <View style={modalStyles.header}>
-          <TouchableOpacity onPress={onClose} activeOpacity={0.6}>
-            <Text style={modalStyles.closeButton}>✕</Text>
+          <TouchableOpacity
+            onPress={() => {
+              if (canClose) {
+                onClose();
+              } else {
+                router.back();
+              }
+            }}
+            activeOpacity={0.6}
+          >
+            <BackIcon size={24} color="#000" />
           </TouchableOpacity>
-          <Text style={modalStyles.headerTitle}>தலைப்பு & தேதியை திருத்த</Text>
+
+          <Text style={modalStyles.headerTitle}>
+            தலைப்பு & தேதியை திருத்த
+          </Text>
+
           <View style={{ width: 24 }} />
         </View>
 
@@ -171,14 +190,13 @@ function EditHeaderModal({
             >
               <CalendarIcon size={20} />
               <Text style={modalStyles.dateButtonText}>
-                {tempDate ? tempDate.toLocaleDateString('en-IN', { dateStyle: 'medium' }) : 'தேதிை தேர்ந்தெடுக்க'}
-              </Text>
+                {tempDate.toLocaleDateString('en-IN', { dateStyle: 'medium' })}              </Text>
             </TouchableOpacity>
           </View>
 
           {showDatePicker && (
             <DateTimePicker
-              value={tempDate || new Date()}
+              value={tempDate}
               mode="date"
               display="default"
               onChange={(_, d) => {
@@ -190,13 +208,15 @@ function EditHeaderModal({
         </ScrollView>
 
         <View style={modalStyles.footer}>
-          <TouchableOpacity
-            style={[modalStyles.button, modalStyles.cancelButton]}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Text style={modalStyles.cancelButtonText}>cancel</Text>
-          </TouchableOpacity>
+          {canClose && (
+            <TouchableOpacity
+              style={[modalStyles.button, modalStyles.cancelButton]}
+              onPress={onClose}
+              activeOpacity={0.7}
+            >
+              <Text style={modalStyles.cancelButtonText}>cancel</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[modalStyles.button, modalStyles.saveButton, !tempTitle.trim() && modalStyles.saveButtonDisabled]}
             onPress={handleSave}
@@ -234,59 +254,108 @@ function EditableRow({
   inputRef: React.RefObject<View | null>;
 }) {
   const localRef = inputRef || React.createRef<View>();
+const [kgFocused, setKgFocused] = useState(false);
+const [gramFocused, setGramFocused] = useState(false);
+const [nameFocused, setNameFocused] = useState(false);
+const [alavuFocused, setAlavuFocused] = useState(false);
 
   return (
     <View style={tableStyles.row}>
-      <View style={[tableStyles.cell, { width: MIN_WIDTHS[0] }]}>  
+      <View style={[tableStyles.cell, { width: MIN_WIDTHS[0] }]}>
         <Text style={tableStyles.cellText}>{row.s_no}</Text>
       </View>
-      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[1] }]}>  
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[1] }]}>
         <View
           ref={localRef}
           style={tableStyles.nameCell}
         >
           <TextInput
-            value={row.name}
-            onFocus={() => {
-              onNameFocus(index);
-            }}
-            onBlur={onNameBlur}
-            onChangeText={(v) => onNameTextChange(index, v)}
-            placeholder="—"
-            multiline={true}
-            // do not constrain lines, let input grow
-            style={tableStyles.nameInput}
-            onEndEditing={() => {
-              if (row.name.trim()) onFocusNext(index, true);
-            }}
-          />
+  value={
+    nameFocused
+      ? (row.name.trim() === '' ? '' : row.name)
+      : (row.name.trim() === '' ? '-' : row.name)
+  }
+  onFocus={() => {
+    setNameFocused(true);
+    onNameFocus(index);
+  }}
+  onBlur={() => {
+    setNameFocused(false);
+    onNameBlur();
+  }}
+  onChangeText={(v) => onNameTextChange(index, v)}
+  multiline
+  style={[
+    tableStyles.nameInput,
+    !nameFocused && row.name.trim() === '' && { color: COLORS.textSecondary }
+  ]}
+/>
         </View>
       </View>
-      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[2] }]}>  
-        <TextInput
-          value={row.kg === 0 ? '' : String(row.kg)}
-          onChangeText={(v) => onChange(index, 'kg', v.replace(/[^0-9.]/g, '') || '0')}
-          keyboardType="decimal-pad"
-          placeholder="0"
-          style={tableStyles.input}
-        />
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[2] }]}>
+       <TextInput
+  value={
+    kgFocused
+      ? (row.kg === 0 ? '' : String(row.kg))
+      : (row.kg === 0 ? '0' : String(row.kg))
+  }
+  onFocus={() => setKgFocused(true)}
+  onBlur={() => {
+    setKgFocused(false);
+    if (!row.kg) {
+      onChange(index, 'kg', 0);
+    }
+  }}
+  onChangeText={(v) =>
+    onChange(index, 'kg', v.replace(/[^0-9.]/g, '') || 0)
+  }
+  keyboardType="decimal-pad"
+  style={[
+    tableStyles.input,
+    !kgFocused && row.kg === 0 && { color: COLORS.textSecondary } // 🔥 light color
+  ]}
+/>
       </View>
-      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[3] }]}>  
-        <TextInput
-          value={row.gram === 0 ? '' : String(row.gram)}
-          onChangeText={(v) => onChange(index, 'gram', v.replace(/[^0-9.]/g, '') || '0')}
-          keyboardType="decimal-pad"
-          placeholder="0"
-          style={tableStyles.input}
-        />
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[3] }]}>
+       <TextInput
+  value={
+    gramFocused
+      ? (row.gram === 0 ? '' : String(row.gram))
+      : (row.gram === 0 ? '0' : String(row.gram))
+  }
+  onFocus={() => setGramFocused(true)}
+  onBlur={() => {
+    setGramFocused(false);
+    if (!row.gram) {
+      onChange(index, 'gram', 0);
+    }
+  }}
+  onChangeText={(v) =>
+    onChange(index, 'gram', v.replace(/[^0-9.]/g, '') || 0)
+  }
+  keyboardType="decimal-pad"
+  style={[
+    tableStyles.input,
+    !gramFocused && row.gram === 0 && { color: COLORS.textSecondary } // 🔥 light color
+  ]}
+/>
       </View>
-      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[4] }]}>  
-        <TextInput
-          value={row.alavu}
-          onChangeText={(v) => onChange(index, 'alavu', v)}
-          placeholder="—"
-          style={[tableStyles.input, { textAlign: 'left' }]}
-        />
+      <View style={[tableStyles.cellInput, { width: MIN_WIDTHS[4] }]}>
+       <TextInput
+  value={
+    alavuFocused
+      ? (row.alavu.trim() === '' ? '' : row.alavu)
+      : (row.alavu.trim() === '' ? '-' : row.alavu)
+  }
+  onFocus={() => setAlavuFocused(true)}
+  onBlur={() => setAlavuFocused(false)}
+  onChangeText={(v) => onChange(index, 'alavu', v)}
+  style={[
+    tableStyles.input,
+    { textAlign: 'left' },
+    !alavuFocused && row.alavu.trim() === '' && { color: COLORS.textSecondary }
+  ]}
+/>
       </View>
     </View>
   );
@@ -348,39 +417,43 @@ function SuggestionOverlay({
 }
 
 const tableStyles = StyleSheet.create({
- row: {
-  flexDirection: 'row',
-  borderBottomWidth: 1,
-  borderBottomColor: '#F0F0F0',
-  minHeight: 40,
-  alignItems: 'stretch',
-},
-cell: {
-  paddingHorizontal: 12,
-  justifyContent: 'center',
-  alignItems: 'center',
-  minHeight: 40,
-},
-
-cellInput: {
-  paddingHorizontal: 12,
-  justifyContent: 'center',
-  alignItems: 'center',
-  minHeight: 40,
-},  cellText: {
+  row: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    minHeight: 40,
+    alignItems: 'stretch',
+  },
+  cell: {
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    minHeight: 40,
+    borderRightWidth: 1,
+    borderRightColor: '#F0F0F0',
+  },
+  cellInput: {
+    paddingHorizontal: 12,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    minHeight: 40,
+    borderRightWidth: 1,
+    borderRightColor: '#F0F0F0',
+  },
+  cellText: {
     fontSize: FONTS.smallSize,
     color: COLORS.text,
     textAlign: 'center',
   },
   input: {
-    fontSize: FONTS.smallSize,
-    color: COLORS.text,
-    paddingVertical: 6,
-    paddingHorizontal: 4, // reduce padding
-    textAlign: 'center',
-    width: '100%',
-    includeFontPadding: false,
-  },
+  fontSize: FONTS.smallSize,
+  color: COLORS.text,
+  paddingVertical: 6,
+  paddingHorizontal: 8,
+  textAlign: 'left',   // 🔥 change here
+  width: '100%',
+  includeFontPadding: false,
+},
   nameInput: {
     fontSize: FONTS.smallSize,
     color: COLORS.text,
@@ -457,7 +530,7 @@ const headerSectionStyles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   date: {
     fontSize: 13,
@@ -592,10 +665,10 @@ export function CreateEditEventScreen() {
 
   // calculate table width so horizontal scroll area expands beyond screen
   const windowWidth = Dimensions.get('window').width;
-const totalTableWidth = useMemo(() => {
-  // sum of all column widths; scrollview width must exactly match this value
-  return MIN_WIDTHS.reduce((acc, w) => acc + w, 0);
-}, []);
+  const totalTableWidth = useMemo(() => {
+    // sum of all column widths; scrollview width must exactly match this value
+    return MIN_WIDTHS.reduce((acc, w) => acc + w, 0);
+  }, []);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number | null>(null);
   const [focusedInputLayout, setFocusedInputLayout] = useState<LayoutRectangle | null>(null);
@@ -636,6 +709,12 @@ const totalTableWidth = useMemo(() => {
   const [modalTitle, setModalTitle] = useState('');
   const [modalDate, setModalDate] = useState<Date | null>(null);
   const menuAnimValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!isEdit) {
+      setShowEditModal(true);
+    }
+  }, [isEdit]);
 
   useEffect(() => {
     Animated.timing(menuAnimValue, {
@@ -1290,35 +1369,35 @@ const totalTableWidth = useMemo(() => {
     };
   }, [handleScroll]);
 
-const handleNameTextChange = useCallback(
-  async (index: number, value: string) => {
-    updateRow(index, 'name', value, currentRows, setCurrentRows);
+  const handleNameTextChange = useCallback(
+    async (index: number, value: string) => {
+      updateRow(index, 'name', value, currentRows, setCurrentRows);
 
-    const q = value.trim();
-    setCurrentQuery(q); // 🔥 THIS WAS MISSING
+      const q = value.trim();
+      setCurrentQuery(q); // 🔥 THIS WAS MISSING
 
-    // re-measure when the focused input changes value (height/position may shift)
-    if (focusedRowIndex === index) {
-      handleScroll();
-    }
+      // re-measure when the focused input changes value (height/position may shift)
+      if (focusedRowIndex === index) {
+        handleScroll();
+      }
 
-    if (q.length < 1) {
-      setSuggestions([]);
-      return;
-    }
+      if (q.length < 1) {
+        setSuggestions([]);
+        return;
+      }
 
-    const reqId = ++suggestionReqId.current;
-    try {
-      const results = await fetchSuggestions(q);
-      if (reqId !== suggestionReqId.current) return;
-      setSuggestions(results);
-    } catch (e) {
-      if (reqId !== suggestionReqId.current) return;
-      setSuggestions([]);
-    }
-  },
-  [currentRows, setCurrentRows, updateRow, handleScroll, focusedRowIndex]
-);
+      const reqId = ++suggestionReqId.current;
+      try {
+        const results = await fetchSuggestions(q);
+        if (reqId !== suggestionReqId.current) return;
+        setSuggestions(results);
+      } catch (e) {
+        if (reqId !== suggestionReqId.current) return;
+        setSuggestions([]);
+      }
+    },
+    [currentRows, setCurrentRows, updateRow, handleScroll, focusedRowIndex]
+  );
   const handleSelectSuggestion = useCallback(
     (index: number, value: string) => {
       updateRow(index, 'name', value, currentRows, setCurrentRows);
@@ -1345,6 +1424,23 @@ const handleNameTextChange = useCallback(
           </View>
         </SafeAreaView>
       </View>
+    );
+  }
+
+  if (!isEdit && !currentEventId) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <EditHeaderModal
+          visible={showEditModal}
+          title={modalTitle}
+          date={modalDate}
+          onTitleChange={setModalTitle}
+          onDateChange={setModalDate}
+          onSave={handleSaveModal}
+          onClose={() => setShowEditModal(false)}
+          canClose={false}
+        />
+      </SafeAreaView>
     );
   }
 
@@ -1378,300 +1474,313 @@ const handleNameTextChange = useCallback(
             {/* wrapper used for layout measurements */}
             <View ref={scrollContentRef} collapsable={false}>
 
-          {/* ============== DESIGN PREVIEW SECTION ============== */}
-          <View style={styles.designPreviewSection}>
-            <View style={styles.designPreviewCardWrapper}>
-              <View style={styles.designPreviewCard}>
-                <DesignPreview
-                  key={customDesignUrl || 'no-design'}
-                  designType={selectedDesign}
-                  profile={profile}
-                  isPreview={true}
-                  customDesignUrl={customDesignUrl}
-                   hideReplaceButton={true} // 👈 THIS LINE IMPORTANT
-                />
+              {/* ============== DESIGN PREVIEW SECTION ============== */}
+              <View style={styles.designPreviewSection}>
+                <View style={styles.designPreviewCardWrapper}>
+                  <View style={styles.designPreviewCard}>
+                    <DesignPreview
+                      key={customDesignUrl || 'no-design'}
+                      designType={selectedDesign}
+                      profile={profile}
+                      isPreview={true}
+                      customDesignUrl={customDesignUrl}
+                      hideReplaceButton={true} // 👈 THIS LINE IMPORTANT
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.editHeaderBtn}
+                    onPress={() => router.push('/customdesign')}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.editHeaderBtnText}>Edit Header</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <TouchableOpacity
-                style={styles.editHeaderBtn}
-                onPress={() => router.push('/customdesign')}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.editHeaderBtnText}>Edit Header</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          <View style={styles.tabsSection}>
-            <View style={styles.segmentedControl}>
-              <TouchableOpacity
-                style={[
-                  styles.segmentButton,
-                  styles.segmentButtonLeft,
-                  activeTab === 'grocery' && styles.segmentButtonActiveGrocery,
-                ]}
-                onPress={() => setActiveTab('grocery')}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.segmentButtonText,
-                    activeTab === 'grocery' && styles.segmentButtonTextActive,
-                  ]}
-                >
-                  மளிகை
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.segmentButton,
-                  styles.segmentButtonRight,
-                  activeTab === 'vegetable' && styles.segmentButtonActiveVegetable,
-                ]}
-                onPress={() => setActiveTab('vegetable')}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.segmentButtonText,
-                    activeTab === 'vegetable' && styles.segmentButtonTextActive,
-                  ]}
-                >
-                  காய்கறி
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.tabsSection}>
+                <View style={styles.segmentedControl}>
+                  <TouchableOpacity
+                    style={[
+                      styles.segmentButton,
+                      styles.segmentButtonLeft,
+                      activeTab === 'grocery' && styles.segmentButtonActiveGrocery,
+                    ]}
+                    onPress={() => setActiveTab('grocery')}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentButtonText,
+                        activeTab === 'grocery' && styles.segmentButtonTextActive,
+                      ]}
+                    >
+                      மளிகை
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.segmentButton,
+                      styles.segmentButtonRight,
+                      activeTab === 'vegetable' && styles.segmentButtonActiveVegetable,
+                    ]}
+                    onPress={() => setActiveTab('vegetable')}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.segmentButtonText,
+                        activeTab === 'vegetable' && styles.segmentButtonTextActive,
+                      ]}
+                    >
+                      காய்கறி
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
-            <View style={styles.menuButtonWrapper}>
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setShowMenu(!showMenu)}
-                activeOpacity={0.6}
-              >
-                <ThreeDotsIcon size={24} color="#4F378B" />
-              </TouchableOpacity>
+                <View style={styles.menuButtonWrapper}>
+                  <TouchableOpacity
+                    style={styles.menuButton}
+                    onPress={() => setShowMenu(!showMenu)}
+                    activeOpacity={0.6}
+                  >
+                    <ThreeDotsIcon size={24} color="#4F378B" />
+                  </TouchableOpacity>
+
+                  {showMenu && (
+                    <Animated.View
+                      style={[
+                        styles.popupMenu,
+                        {
+                          opacity: menuAnimValue,
+                          transform: [
+                            {
+                              scale: menuAnimValue.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0.8, 1],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    >
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={handleExport}
+                        disabled={exporting || !title.trim()}
+                        activeOpacity={0.6}
+                      >
+                        <ExportIcon size={18} color="black" />
+                        <Text
+                          style={[
+                            styles.menuItemText,
+                            !title.trim() && styles.menuItemTextDisabled,
+                          ]}
+                        >
+                          {exporting ? 'ஏற்றுமதி நடைபெறுகிறது...' : 'ஏற்றுமதி'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View style={styles.menuDivider} />
+
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={handleDownload}
+                        disabled={downloading || !title.trim()}
+                        activeOpacity={0.6}
+                      >
+                        <DownloadIcon
+                          size={18}
+                          color="black"
+                        />
+                        <Text
+                          style={[
+                            styles.menuItemText,
+                            !title.trim() && styles.menuItemTextDisabled,
+                          ]}
+                        >
+                          {downloading ? 'பதிவிறக்கம் நடைபெறுகிறது...' : 'பதிவிறக்கம்'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View style={styles.menuDivider} />
+
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={handleShare}
+                        disabled={sharing || !title.trim()}
+                        activeOpacity={0.6}
+                      >
+                        <ShareIcon
+                          size={18}
+                          color="black"
+                        />
+                        <Text
+                          style={[
+                            styles.menuItemText,
+                            !title.trim() && styles.menuItemTextDisabled,
+                          ]}
+                        >
+                          {sharing ? 'பகிரப்படுகிறது...' : 'பகிர்வு'}
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View style={styles.menuDivider} />
+
+                      {/* preview option - last item */}
+                      <TouchableOpacity
+  style={styles.menuItem}
+  onPress={handlePreview}
+  disabled={!title.trim()}
+  activeOpacity={0.6}
+>
+  <EyeIcon size={18} color="black" />
+
+  <Text
+    style={[
+      styles.menuItemText,
+      !title.trim() && styles.menuItemTextDisabled,
+    ]}
+  >
+    காண்பி
+  </Text>
+</TouchableOpacity>
+
+                      <View style={styles.menuDivider} />
+
+                      {/* add dish option */}
+                      <TouchableOpacity
+                        style={styles.menuItem}
+                        onPress={handleAddDish}
+                        activeOpacity={0.6}
+                      >
+                        <PlusIcon size={18} color="black" />
+                        <Text style={styles.menuItemText}>
+                          Notes
+                        </Text>
+                      </TouchableOpacity>
+
+                      <View style={styles.menuDivider} />
+                    </Animated.View>
+                  )}
+                </View>
+              </View>
 
               {showMenu && (
-                <Animated.View
-                  style={[
-                    styles.popupMenu,
-                    {
-                      opacity: menuAnimValue,
-                      transform: [
-                        {
-                          scale: menuAnimValue.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.8, 1],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                >
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={handleExport}
-                    disabled={exporting || !title.trim()}
-                    activeOpacity={0.6}
-                  >
-                    <ExportIcon size={18} color="black" />
-                    <Text
-                      style={[
-                        styles.menuItemText,
-                        !title.trim() && styles.menuItemTextDisabled,
-                      ]}
-                    >
-                      {exporting ? 'ஏற்றுமதி நடைபெறுகிறது...' : 'ஏற்றுமதி'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.menuDivider} />
-
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={handleDownload}
-                    disabled={downloading || !title.trim()}
-                    activeOpacity={0.6}
-                  >
-                    <DownloadIcon
-                      size={18}
-                      color="black"
-                    />
-                    <Text
-                      style={[
-                        styles.menuItemText,
-                        !title.trim() && styles.menuItemTextDisabled,
-                      ]}
-                    >
-                      {downloading ? 'பதிவிறக்கம் நடைபெறுகிறது...' : 'பதிவிறக்கம்'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.menuDivider} />
-
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={handleShare}
-                    disabled={sharing || !title.trim()}
-                    activeOpacity={0.6}
-                  >
-                    <ShareIcon
-                      size={18}
-                      color="black"
-                    />
-                    <Text
-                      style={[
-                        styles.menuItemText,
-                        !title.trim() && styles.menuItemTextDisabled,
-                      ]}
-                    >
-                      {sharing ? 'பகிரப்படுகிறது...' : 'பகிர்வு'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.menuDivider} />
-
-                  {/* preview option - last item */}
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={handlePreview}
-                    disabled={!title.trim()}
-                    activeOpacity={0.6}
-                  >
-                    <Text
-                      style={[
-                        styles.menuItemText,
-                        !title.trim() && styles.menuItemTextDisabled,
-                      ]}
-                    >
-                      Preview
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.menuDivider} />
-
-                  {/* add dish option */}
-                  <TouchableOpacity
-                    style={styles.menuItem}
-                    onPress={handleAddDish}
-                    activeOpacity={0.6}
-                  >
-                    <PlusIcon size={18} color="black" />
-                    <Text style={styles.menuItemText}>
-                      Add Dish
-                    </Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.menuDivider} />
-                </Animated.View>
+                <TouchableOpacity
+                  style={styles.backdrop}
+                  activeOpacity={1}
+                  onPress={() => setShowMenu(false)}
+                />
               )}
-            </View>
-          </View>
 
-          {showMenu && (
-            <TouchableOpacity
-              style={styles.backdrop}
-              activeOpacity={1}
-              onPress={() => setShowMenu(false)}
-            />
-          )}
+              {/* horizontal table container that can grow based on content */}
+              {/* ===== HORIZONTAL TABLE ===== */}
+              <View style={{ marginBottom: SPACING.lg, position: 'relative' }}>
 
-          {/* horizontal table container that can grow based on content */}
-     {/* ===== HORIZONTAL TABLE ===== */}
-<View style={{ marginBottom: SPACING.lg, position: 'relative' }}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator
+                  directionalLockEnabled
+                  nestedScrollEnabled
+                  keyboardShouldPersistTaps="handled"
+                  onScroll={handleScroll}
+                  scrollEventThrottle={16}
+                >
+                  <View
+                    style={{
+                      width: totalTableWidth,
+                    }}
+                  >
+                    {/* HEADER */}
+                    <View style={styles.headerRow}>
+                      {HEADERS.map((h, i) => (
+                        <View
+                          key={h}
+                          style={[
+                            styles.headerCell,
+                            { width: MIN_WIDTHS[i] },
+                          ]}
+                        >
+                          <Text style={styles.headerText}>{h}</Text>
+                        </View>
+                      ))}
+                    </View>
 
-  <ScrollView
-    horizontal
-    showsHorizontalScrollIndicator
-    directionalLockEnabled
-    nestedScrollEnabled
-    keyboardShouldPersistTaps="handled"
-    onScroll={handleScroll}
-    scrollEventThrottle={16}
+                    {/* ROWS */}
+                    {currentRows.map((row, index) => {
+                      // ensure there is a ref object for this index
+                      if (!rowRefs.current[index]) {
+                        rowRefs.current[index] = React.createRef<View | null>();
+                      }
+                      return (
+                        <EditableRow
+                          key={index}
+                          row={row}
+                          index={index}
+                          onChange={(idx, field, value) =>
+                            updateRow(idx, field, value, currentRows, setCurrentRows)
+                          }
+                          onFocusNext={(_, addNew) =>
+                            addNew && ensureNextRow(setCurrentRows)
+                          }
+                          onNameFocus={handleNameFocus}
+                          onNameBlur={handleNameBlur}
+                          onNameTextChange={handleNameTextChange}
+                          inputRef={rowRefs.current[index]}
+                        />
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+
+              </View>
+
+              {/* suggestion dropdown below table */}
+              {showDropdown && focusedInputLayout && (
+                <SuggestionOverlay
+                  layout={focusedInputLayout}
+                  suggestions={suggestions}
+                  query={currentQuery}
+                  onSelect={(val) => handleSelectSuggestion(focusedRowIndex!, val)}
+                  onAdd={() => router.push('/suggestions')}
+                />
+              )}
+
+              <View style={styles.footerRow}>
+  
+  <TouchableOpacity
+    style={styles.previewIconBtn}
+    onPress={handlePreview}
+    activeOpacity={0.7}
   >
-    <View
-      style={{
-        width: totalTableWidth,
-      }}
-    >
-      {/* HEADER */}
-      <View style={styles.headerRow}>
-        {HEADERS.map((h, i) => (
-          <View
-            key={h}
-            style={[
-              styles.headerCell,
-              { width: MIN_WIDTHS[i] },
-            ]}
-          >
-            <Text style={styles.headerText}>{h}</Text>
-          </View>
-        ))}
-      </View>
+    <EyeIcon size={22} color="#4F378B" />
+  </TouchableOpacity>
 
-      {/* ROWS */}
-      {currentRows.map((row, index) => {
-        // ensure there is a ref object for this index
-        if (!rowRefs.current[index]) {
-          rowRefs.current[index] = React.createRef<View | null>();
-        }
-        return (
-          <EditableRow
-            key={index}
-            row={row}
-            index={index}
-            onChange={(idx, field, value) =>
-              updateRow(idx, field, value, currentRows, setCurrentRows)
-            }
-            onFocusNext={(_, addNew) =>
-              addNew && ensureNextRow(setCurrentRows)
-            }
-            onNameFocus={handleNameFocus}
-            onNameBlur={handleNameBlur}
-            onNameTextChange={handleNameTextChange}
-            inputRef={rowRefs.current[index]}
-          />
-        );
-      })}
-    </View>
-  </ScrollView>
+  <GradientButton
+    title="சேமிக்க"
+    onPress={handleSave}
+    loading={saving}
+    disabled={!title.trim()}
+    style={styles.saveBtnSmall}
+  />
 
 </View>
-
-          {/* suggestion dropdown below table */}
-          {showDropdown && focusedInputLayout && (
-            <SuggestionOverlay
-              layout={focusedInputLayout}
-              suggestions={suggestions}
-              query={currentQuery}
-              onSelect={(val) => handleSelectSuggestion(focusedRowIndex!, val)}
-              onAdd={() => router.push('/suggestions')}
-            />
-          )}
-
-          <View style={styles.footer}>
-            <GradientButton
-              title="சேமிக்க"
-              onPress={handleSave}
-              loading={saving}
-              disabled={!title.trim()}
-              style={styles.saveBtn}
-            />
-          </View>
             </View> {/* end scrollContentRef wrapper */}
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-      <EditHeaderModal
-        visible={showEditModal}
-        title={modalTitle}
-        date={modalDate}
-        onTitleChange={setModalTitle}
-        onDateChange={setModalDate}
-        onSave={handleSaveModal}
-        onClose={() => setShowEditModal(false)}
-      />
-    </SafeAreaView>
-  </View>
+        <EditHeaderModal
+          visible={showEditModal}
+          title={modalTitle}
+          date={modalDate}
+          onTitleChange={setModalTitle}
+          onDateChange={setModalDate}
+          onSave={handleSaveModal}
+          onClose={() => setShowEditModal(false)}
+          canClose={isEdit}
+        />
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -1911,15 +2020,15 @@ const styles = StyleSheet.create({
   headerCell: {
     paddingHorizontal: 12,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderRightWidth: 0,
-    borderRightColor: 'transparent',
+    alignItems: 'flex-start',   // 🔥 left align
+    borderRightWidth: 1,
+    borderRightColor: '#E5E7EB',
   },
   headerText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#6B7280',
-    textAlign: 'center',
+    textAlign: 'left',
   },
   footer: {
     padding: SPACING.lg,
@@ -1929,6 +2038,30 @@ const styles = StyleSheet.create({
   saveBtn: {
     width: '100%',
   },
+ footerRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'flex-start',   // 🔥 left align
+  gap: SPACING.md,
+  paddingLeft: SPACING.lg,        // 🔥 left spacing control
+  paddingRight: SPACING.lg,
+  paddingBottom: SPACING.xl + 16,
+},
+
+previewIconBtn: {
+  width: 48,
+  height: 48,
+  borderRadius: 12,
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: '#F3EDF7',
+  borderWidth: 1,
+  borderColor: '#4F378B',
+},
+
+saveBtnSmall: {
+  width: 180,   // 🔥 width kammi
+},
 
   // Design Preview Section
   designPreviewSection: {
