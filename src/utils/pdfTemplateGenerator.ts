@@ -100,7 +100,8 @@ export function generatePdfHtmlTemplate(
   items: PdfTableRow[],
   profile: PdfProfile,
   selectedDesign: 'default' | 'custom' = 'default',
-  customDesignUrl: string | null = null
+  customDesignUrl: string | null = null,
+  footerText: string = ''   // ✅ ADD THIS
 ) {
   const totalPages = Math.max(1, Math.ceil(items.length / ROWS_PER_PAGE))
 // ✅ DEFINE TAMIL TYPE HERE (CORRECT PLACE)
@@ -127,13 +128,26 @@ export function generatePdfHtmlTemplate(
   }
 
   .page {
-    width: 210mm;
-    height: 297mm;
-    page-break-after: always;
-    display: flex;
-    flex-direction: column;
-  }
+  width: 210mm;
+  height: 297mm;
+  page-break-after: always;
+  display: flex;
+  flex-direction: column;
+}
 
+.table-wrap {
+  flex: 1;
+}
+
+.footer {
+  width: 95%;
+  margin: 0 auto 20px auto;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  border-top: 1px solid #B3B3B3;
+  padding-top: 8px;
+}
   /* HEADER WRAPPER */
   .header-wrapper {
     width: 100%;
@@ -296,61 +310,68 @@ export function generatePdfHtmlTemplate(
   for (let p = 0; p < totalPages; p++) {
     const start = p * ROWS_PER_PAGE
 
-    html += `
-    <div class="page">
-      ${buildHeader(profile, selectedDesign, customDesignUrl)}
+html += `
+<div class="page">
 
-      <div class="event-row">
-  <div>
-    ${escapeHtml(event.title)}<br/>
-    <span style="font-weight:500;font-size:14px;">
-      ${tamilType}
-    </span>
-  </div>
+  ${buildHeader(profile, selectedDesign, customDesignUrl)}
 
-  <div>
-    ${event.date ? new Date(event.date).toLocaleDateString('en-IN') : ''}
-  </div>
-</div>
-
-      <div class="table-wrap">
-        <div class="column">
-          <table>
-            <thead>
-              <tr>
-                <th>எ</th>
-                <th>பொருள்கள்</th>
-                <th>கி</th>
-                <th>கிரா</th>
-                <th>அ</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows(items, start)}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="column">
-          <table>
-            <thead>
-              <tr>
-                <th>எ</th>
-                <th>பொருள்கள்</th>
-                <th>கி</th>
-                <th>கிரா</th>
-                <th>அ</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows(items, start + PER_COLUMN)}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  <div class="event-row">
+    <div>
+      ${escapeHtml(event.title)}<br/>
+      <span style="font-weight:500;font-size:14px;">
+        ${tamilType}
+      </span>
     </div>
-    `
-  }
+
+    <div>
+      ${event.date ? new Date(event.date).toLocaleDateString('en-IN') : ''}
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="column">
+      <table>
+        <thead>
+          <tr>
+            <th>எ</th>
+            <th>பொருள்கள்</th>
+            <th>கி</th>
+            <th>கிரா</th>
+            <th>அ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows(items, start)}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="column">
+      <table>
+        <thead>
+          <tr>
+            <th>எ</th>
+            <th>பொருள்கள்</th>
+            <th>கி</th>
+            <th>கிரா</th>
+            <th>அ</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows(items, start + PER_COLUMN)}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  ${footerText ? `
+    <div class="footer">
+      ${escapeHtml(footerText)}
+    </div>
+  ` : ''}
+
+</div>
+`  }
 
   html += `</body></html>`
 

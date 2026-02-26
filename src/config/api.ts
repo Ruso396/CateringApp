@@ -18,6 +18,7 @@ export const ENDPOINTS = {
   vegetable: (id: number) => `/events/${id}/vegetable`,
   customDesign: '/custom-design',
   customDesignUpload: '/custom-design/upload',
+  footer: '/footer',
   suggestions: '/suggestions',
   suggestion: (id: number) => `/suggestions/${id}`,
   dishes: (eventId: number) => `/events/${eventId}/dishes`,

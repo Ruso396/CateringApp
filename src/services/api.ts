@@ -491,3 +491,15 @@ export async function deleteCustomDesign(): Promise<void> {
     throw error;
   }
 }
+
+// Footer (Common across all events)
+export async function fetchFooter(): Promise<string> {
+  const { data } = await apiClient.get<{ success: boolean; footer_text: string }>(ENDPOINTS.footer);
+  if (!data.success) throw new Error('Failed to fetch footer');
+  return data.footer_text || '';
+}
+
+export async function saveFooter(footerText: string): Promise<void> {
+  const { data } = await apiClient.post<{ success: boolean }>(ENDPOINTS.footer, { footer_text: footerText });
+  if (!data.success) throw new Error('Failed to save footer');
+}

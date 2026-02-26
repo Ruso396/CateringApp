@@ -3,13 +3,15 @@ import { COLORS, FONTS, SPACING } from '@/src/constants/theme';
 import { useDesign } from '@/src/context/DesignContext';
 import { useProfile } from '@/src/context/ProfileContext';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -48,12 +50,19 @@ export default function CustomDesignScreen() {
     customDesignUrl,
     setCustomDesignUrl,
     refreshCustomDesign,
+    footerText,
+    setFooterText,
+    saveFooterText,
+    refreshFooter,
   } = useDesign();
+
+  const [isSavingFooter, setIsSavingFooter] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       refreshCustomDesign();
-    }, [refreshCustomDesign])
+      refreshFooter();
+    }, [refreshCustomDesign, refreshFooter])
   );
 
   const handleSelectDesign = (design: 'default' | 'custom') => {
@@ -63,6 +72,24 @@ export default function CustomDesignScreen() {
   const handleCustomDesignUploaded = (url: string) => {
     setCustomDesignUrl(url);
     setSelectedDesign('custom');
+  };
+
+  const handleSaveFooter = async () => {
+    if (footerText.trim().length === 0) {
+      Alert.alert('Empty Footer', 'Please enter some text or leave it as is.');
+      return;
+    }
+
+    setIsSavingFooter(true);
+    try {
+      await saveFooterText(footerText);
+      Alert.alert('Success', 'Footer saved successfully!');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      Alert.alert('Error', `Failed to save footer: ${errorMsg}`);
+    } finally {
+      setIsSavingFooter(false);
+    }
   };
 
   return (
@@ -119,6 +146,36 @@ export default function CustomDesignScreen() {
               onCustomDesignUploaded={handleCustomDesignUploaded}
             />
           )}
+        </View>
+
+        {/* FOOTER SECTION */}
+        <View style={[styles.card, { marginTop: 20 }]}>
+          <Text style={[styles.title, { marginBottom: 14 }]}>Footer</Text>
+
+          <View style={styles.footerInputWrapper}>
+            <TextInput
+              style={styles.footerInput}
+              placeholder="Type any thoughts"
+              value={footerText}
+              onChangeText={setFooterText}
+              multiline
+              maxLength={180}
+              placeholderTextColor="#999999"
+              textAlignVertical="top"
+            />
+            <Text style={styles.charCounter}>{footerText.length}/180</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.saveButton, isSavingFooter && styles.saveButtonDisabled]}
+            onPress={handleSaveFooter}
+            activeOpacity={0.7}
+            disabled={isSavingFooter}
+          >
+            <Text style={styles.saveButtonText}>
+              {isSavingFooter ? 'Saving...' : 'Save'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -203,5 +260,53 @@ const styles = StyleSheet.create({
     fontSize: FONTS.bodySize,
     fontWeight: '600',
     color: COLORS.text,
+  },
+
+  /* FOOTER INPUT */
+  footerInputWrapper: {
+    position: 'relative',
+    marginBottom: 12,
+  },
+
+  footerInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 100,
+    maxHeight: 150,
+    fontSize: 14,
+    color: COLORS.text,
+    backgroundColor: '#F9FAFB',
+    fontFamily: 'System',
+  },
+
+  charCounter: {
+    position: 'absolute',
+    bottom: 8,
+    right: 12,
+    fontSize: 12,
+    color: '#999999',
+    fontWeight: '500',
+  },
+
+  /* SAVE BUTTON */
+  saveButton: {
+    backgroundColor: '#1B319F',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

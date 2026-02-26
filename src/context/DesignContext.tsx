@@ -1,4 +1,4 @@
-import { fetchCustomDesignUrl } from '@/src/services/api';
+import { fetchCustomDesignUrl, fetchFooter, saveFooter } from '@/src/services/api';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type DesignType = 'default' | 'custom';
@@ -10,6 +10,11 @@ interface DesignContextType {
   setCustomDesignUrl: (url: string | null) => void;
   loadingCustomDesign: boolean;
   refreshCustomDesign: () => Promise<void>;
+  footerText: string;
+  setFooterText: (text: string) => void;
+  loadingFooter: boolean;
+  refreshFooter: () => Promise<void>;
+  saveFooterText: (text: string) => Promise<void>;
 }
 
 const DesignContext = createContext<DesignContextType | undefined>(undefined);
@@ -18,6 +23,8 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
   const [selectedDesign, setSelectedDesign] = useState<DesignType>('default');
   const [customDesignUrl, setCustomDesignUrl] = useState<string | null>(null);
   const [loadingCustomDesign, setLoadingCustomDesign] = useState(false);
+  const [footerText, setFooterText] = useState('');
+  const [loadingFooter, setLoadingFooter] = useState(false);
 
   const refreshCustomDesign = React.useCallback(async () => {
     setLoadingCustomDesign(true);
@@ -44,12 +51,38 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoadingCustomDesign(false);
     }
-  }, []); // Empty dependency array - function doesn't depend on any props/state
+  }, []);
 
-  // Load custom design URL on mount
+  const refreshFooter = React.useCallback(async () => {
+    setLoadingFooter(true);
+    try {
+      const footer = await fetchFooter();
+      setFooterText(footer);
+      console.log('[DesignContext] Footer loaded:', footer);
+    } catch (error) {
+      console.warn('[DesignContext] Error loading footer:', error);
+      setFooterText('');
+    } finally {
+      setLoadingFooter(false);
+    }
+  }, []);
+
+  const saveFooterText = React.useCallback(async (text: string) => {
+    try {
+      await saveFooter(text);
+      setFooterText(text);
+      console.log('[DesignContext] Footer saved successfully');
+    } catch (error) {
+      console.error('[DesignContext] Error saving footer:', error);
+      throw error;
+    }
+  }, []);
+
+  // Load custom design and footer on mount
   useEffect(() => {
     refreshCustomDesign();
-  }, [refreshCustomDesign]);
+    refreshFooter();
+  }, [refreshCustomDesign, refreshFooter]);
 
   return (
     <DesignContext.Provider
@@ -60,6 +93,11 @@ export function DesignProvider({ children }: { children: React.ReactNode }) {
         setCustomDesignUrl,
         loadingCustomDesign,
         refreshCustomDesign,
+        footerText,
+        setFooterText,
+        loadingFooter,
+        refreshFooter,
+        saveFooterText,
       }}
     >
       {children}
