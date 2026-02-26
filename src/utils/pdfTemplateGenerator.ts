@@ -76,6 +76,7 @@ function buildHeader(
 
 function tableRows(rows: PdfTableRow[], start: number) {
   let html = ''
+
   for (let i = 0; i < PER_COLUMN; i++) {
     const row = rows[start + i]
     const sNo = start + i + 1
@@ -83,16 +84,16 @@ function tableRows(rows: PdfTableRow[], start: number) {
     html += `
     <tr>
       <td>${sNo}</td>
-      <td>${row?.name || '-'}</td>
-      <td>${row?.kg || '-'}</td>
-      <td>${row?.gram || '-'}</td>
-      <td>${row?.alavu || '-'}</td>
+      <td>${row?.name ? escapeHtml(row.name) : ''}</td>
+      <td>${row?.kg && row.kg !== 0 ? row.kg : ''}</td>
+      <td>${row?.gram && row.gram !== 0 ? row.gram : ''}</td>
+      <td>${row?.alavu ? escapeHtml(row.alavu) : ''}</td>
     </tr>
     `
   }
+
   return html
 }
-
 export function generatePdfHtmlTemplate(
   event: Pick<Event, 'title' | 'date'>,
   type: 'grocery' | 'vegetable',
@@ -102,6 +103,11 @@ export function generatePdfHtmlTemplate(
   customDesignUrl: string | null = null
 ) {
   const totalPages = Math.max(1, Math.ceil(items.length / ROWS_PER_PAGE))
+// ✅ DEFINE TAMIL TYPE HERE (CORRECT PLACE)
+  const tamilType =
+    type === 'grocery'
+      ? 'மளிகை பட்டியல்'
+      : 'காய்கறி பட்டியல்'
 
   let html = `
   <html>
@@ -295,9 +301,17 @@ export function generatePdfHtmlTemplate(
       ${buildHeader(profile, selectedDesign, customDesignUrl)}
 
       <div class="event-row">
-        <div>${escapeHtml(event.title)}</div>
-        <div>${event.date ? new Date(event.date).toLocaleDateString() : ''}</div>
-      </div>
+  <div>
+    ${escapeHtml(event.title)}<br/>
+    <span style="font-weight:500;font-size:14px;">
+      ${tamilType}
+    </span>
+  </div>
+
+  <div>
+    ${event.date ? new Date(event.date).toLocaleDateString('en-IN') : ''}
+  </div>
+</div>
 
       <div class="table-wrap">
         <div class="column">

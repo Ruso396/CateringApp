@@ -399,7 +399,7 @@ function SuggestionOverlay({
       ]}
     >
       <TouchableOpacity style={suggestionStyles.item} activeOpacity={0.7} onPress={onAdd}>
-        <Text style={[suggestionStyles.text, suggestionStyles.addSuggestion]}>+ Add Suggestion</Text>
+        <Text style={[suggestionStyles.text, suggestionStyles.addSuggestion]}>+ Add Item</Text>
       </TouchableOpacity>
 
       {filtered.map((item, i) => (
@@ -1291,16 +1291,32 @@ export function CreateEditEventScreen() {
   }, [router, title, date, activeTab, groceryRows, vegetableRows]);
 
   // Add Dish handler: navigates to add dish screen
-  const handleAddDish = useCallback(() => {
-    setShowMenu(false);
-    router.push({
-      pathname: '/adddish',
-      params: {
-        eventId: String(eventId),
-      },
-    });
-  }, [router, eventId]);
+const [navigating, setNavigating] = useState(false);
 
+const handleAddDish = useCallback(() => {
+  if (navigating) return;
+
+  setNavigating(true);
+  setShowMenu(false);
+
+  const idToUse =
+    currentEventId && currentEventId > 0
+      ? currentEventId
+      : eventId;
+
+  if (!idToUse || idToUse <= 0) {
+    Alert.alert('Error', 'Please save the event first');
+    setNavigating(false);
+    return;
+  }
+
+  router.replace({
+    pathname: '/notes',
+    params: { eventId: String(idToUse) },
+  });
+
+  setTimeout(() => setNavigating(false), 1000);
+}, [router, eventId, currentEventId, navigating]);
   const currentRows = activeTab === 'grocery' ? groceryRows : vegetableRows;
   const setCurrentRows = activeTab === 'grocery' ? setGroceryRows : setVegetableRows;
 

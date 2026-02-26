@@ -418,7 +418,47 @@ export async function uploadCustomDesign(uri: string): Promise<string> {
     throw error;
   }
 }
+export type EventNote = {
+  id: number;
+  event_id: number;
+  note: string;
+};
 
+/**
+ * Fetch note for a specific event
+ */
+export async function fetchNote(eventId: number): Promise<EventNote | null> {
+  if (!eventId || eventId <= 0) throw new Error('Invalid event ID');
+
+  const { data } = await apiClient.get<{ success: boolean; data: EventNote | null }>(
+    `/events/${eventId}/note`
+  );
+
+  if (!data.success) {
+    throw new Error((data as any).error || 'Failed to fetch note');
+  }
+
+  return data.data;
+}
+
+/**
+ * Save or update note for event
+ */
+export async function saveNote(eventId: number, note: string): Promise<void> {
+  if (!eventId || eventId <= 0) throw new Error('Invalid event ID');
+
+  const trimmed = note.trim();
+  if (!trimmed) throw new Error('Note cannot be empty');
+
+  const { data } = await apiClient.post<{ success: boolean }>(
+    `/events/${eventId}/note`,
+    { note: trimmed }
+  );
+
+  if (!data.success) {
+    throw new Error((data as any).error || 'Failed to save note');
+  }
+}
 /**
  * Delete user's custom design (optional feature)
  */
