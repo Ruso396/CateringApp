@@ -135,9 +135,7 @@ export function generatePdfHtmlTemplate(
   flex-direction: column;
 }
 
-.table-wrap {
-  flex: 1;
-}
+
 
 .footer {
   width: 95%;
@@ -234,14 +232,14 @@ export function generatePdfHtmlTemplate(
   }
 
   /* TABLE WRAP */
-  .table-wrap {
-    width: 95%;
-    margin: 0 auto;
-    margin-bottom: 25px; /* add bottom space so last row doesn't touch bottom edge */
-    flex: 1;
-    display: flex;
-    gap: 20px; /* horizontal gap between left and right tables */
-  }
+.table-wrap {
+  width: 95%;
+  margin: 0 auto;
+  margin-bottom: 20px;
+  flex: 0.95; /* 5% kammi */
+  display: flex;
+  gap: 20px;
+}
 
   .column {
     flex: 1; /* equal width distribution with gap */
@@ -300,7 +298,7 @@ export function generatePdfHtmlTemplate(
   }
 
  tbody tr {
-  height: 24px;
+  height: 22px;
 }
   </style>
   </head>
