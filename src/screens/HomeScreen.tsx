@@ -17,6 +17,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import vector from '../assets/Vector.png';
 
@@ -31,7 +32,7 @@ export function HomeScreen() {
   const [menuOpenEventId, setMenuOpenEventId] = useState<number | null>(null);
   const [popupAnchor, setPopupAnchor] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const menuAnchorRef = useRef<View>(null);
-
+const insets = useSafeAreaInsets();
   const loadEvents = useCallback(async () => {
     try {
       const list = await fetchEvents();
@@ -232,11 +233,14 @@ export function HomeScreen() {
         </Pressable>
       </Modal>
 
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={() => router.push('/create')}
-        activeOpacity={0.8}
-      >
+    <TouchableOpacity
+  style={[
+    styles.createButton,
+    { bottom: insets.bottom + 20 }
+  ]}
+  onPress={() => router.push('/create')}
+  activeOpacity={0.8}
+>
         <Image source={vector} style={styles.createIcon} />
         <Text style={styles.createText}>Create List</Text>
       </TouchableOpacity>
@@ -246,7 +250,7 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F7F7' },
-  listContainer: { padding: 16, paddingBottom: 100 },
+  listContainer: { padding: 16, paddingBottom: 140 },
 
   listItem: {
     flexDirection: 'row',

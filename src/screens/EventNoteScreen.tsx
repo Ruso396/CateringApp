@@ -11,12 +11,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Polygon } from 'react-native-svg';
 
 export function EventNoteScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ eventId?: string }>();
   const eventId = params.eventId ? parseInt(params.eventId, 10) : null;
 
@@ -24,7 +27,7 @@ export function EventNoteScreen() {
   const [savedNote, setSavedNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState(false); // 🔥 New logic
+  const [viewMode, setViewMode] = useState(false);
 
   const loadNote = useCallback(async () => {
     if (!eventId) {
@@ -38,7 +41,7 @@ export function EventNoteScreen() {
       if (data) {
         setNote(data.note);
         setSavedNote(data.note);
-        setViewMode(true); // if already saved → paragraph mode
+        setViewMode(true);
       }
     } catch {
       Alert.alert('Error', 'Failed to load note');
@@ -55,7 +58,7 @@ export function EventNoteScreen() {
     if (!eventId) return;
 
     if (!note.trim()) {
-      Alert.alert('Validation', 'Note cannot be empty');
+      Alert.alert('Validation', 'Note empty aa iruka koodathu');
       return;
     }
 
@@ -63,128 +66,157 @@ export function EventNoteScreen() {
     try {
       await saveNote(eventId, note);
       setSavedNote(note);
-      setViewMode(true); // 🔥 After save go to view mode
+      setViewMode(true);
     } catch {
-      Alert.alert('Error', 'Failed to save note');
+      Alert.alert('Error', 'Save panna mudiyala');
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Event Notes</Text>
+          <Text style={styles.headerTitle}>Event Notes</Text>
 
-        <View style={{ width: 24 }} />
-      </View>
+          <View style={{ width: 30 }} />
+        </View>
 
-      <View style={styles.content}>
+        {/* CONTENT */}
+        <View style={styles.content}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#888" />
+          ) : viewMode ? (
 
-        {loading ? (
-          <ActivityIndicator size="small" color={COLORS.textSecondary} />
-        ) : viewMode ? (
+            /* VIEW MODE */
+            <View style={styles.noteCard}>
+              <Text style={styles.noteText}>
+                {savedNote}
+              </Text>
 
-          // ✅ Paragraph Mode
-          <View style={styles.noteCard}>
-            <Text style={styles.noteText}>{savedNote}</Text>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setViewMode(false)}
+              >
+                <Svg width={28} height={28} viewBox="0 0 24 24">
+                  <Path
+                    d="M20 16v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2H8"
+                    fill="none"
+                    stroke="#5762ff"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <Polygon
+                    points="12.5 15.8 22 6.2 17.8 2 8.3 11.5 8 16 12.5 15.8"
+                    fill="none"
+                    stroke="#5762ff"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setViewMode(false)}
-            >
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-                <Path
-                  d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25Z"
-                  fill="#5762ff"
-                />
-              </Svg>
-            </TouchableOpacity>
-          </View>
+          ) : (
 
-        ) : (
+            /* EDIT MODE */
+            <View style={styles.editContainer}>
+              <TextInput
+                multiline
+                value={note}
+                onChangeText={setNote}
+                placeholder="Ungaloda event note inga type pannunga..."
+                placeholderTextColor="#999"
+                style={styles.bigInput}
+                textAlignVertical="top"
+              />
+            </View>
 
-          // ✅ Edit Mode (Default first time)
-          <View style={styles.editContainer}>
-            <TextInput
-              multiline
-              value={note}
-              onChangeText={setNote}
-              placeholder="Type your event notes here..."
-              placeholderTextColor={COLORS.textSecondary}
-              style={styles.bigInput}
-              textAlignVertical="top"
-            />
+          )}
+        </View>
 
+        {/* SAVE BUTTON FIXED BOTTOM */}
+        {!viewMode && (
+          <View style={[styles.bottomArea, { paddingBottom: insets.bottom + 12 }]}>
             <GradientButton
-              title={saving ? 'Saving...' : 'Save'}
+              title={saving ? 'Saving...' : 'Save Note'}
               onPress={handleSave}
               loading={saving}
               style={styles.saveButton}
             />
           </View>
-
         )}
 
-      </View>
-
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#f4f6fa',
   },
 
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#ffffff',
+    elevation: 4,
   },
 
   backArrow: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#111',
   },
 
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#111',
   },
 
   content: {
     flex: 1,
-    padding: SPACING.lg,
+    padding: 20,
   },
 
   noteCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: SPACING.lg,
-    elevation: 2,
+    borderRadius: 18,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
   },
 
   noteText: {
     fontSize: 16,
-    lineHeight: 24,
-    color: COLORS.text,
+    lineHeight: 26,
+    color: '#222',
   },
 
   editButton: {
     alignSelf: 'flex-end',
-    marginTop: SPACING.md,
+    marginTop: 18,
   },
 
   editContainer: {
@@ -194,14 +226,21 @@ const styles = StyleSheet.create({
   bigInput: {
     flex: 1,
     backgroundColor: '#ffffff',
-    borderRadius: 14,
-    padding: SPACING.lg,
+    borderRadius: 18,
+    padding: 20,
     fontSize: 16,
-    marginBottom: SPACING.lg,
+    lineHeight: 24,
+    color: '#000',   // Tamil unicode correct aa show agum
+  },
+
+  bottomArea: {
+    paddingHorizontal: 20,
+    backgroundColor: '#f4f6fa',
   },
 
   saveButton: {
-    height: 52,
-    borderRadius: 14,
+    height: 56,
+    borderRadius: 18,
   },
+
 });
